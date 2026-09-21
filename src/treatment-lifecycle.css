@@ -1,0 +1,89 @@
+/* Additive: preserves RTTRACK's existing navy/white theme and treatment.css. */
+.rtt-lifecycle-action { margin-top: 1rem; padding: 1rem; border: 1px solid #cbd3ef; border-radius: 12px; background: #f8faff; }
+.rtt-lifecycle-action h4 { margin: 0 0 .6rem; color: #10165b; }
+.rtt-lifecycle-action label { display: block; margin-top: .7rem; font-weight: 600; color: #10165b; }
+.rtt-lifecycle-action textarea, .rtt-lifecycle-action input, .rtt-lifecycle-action select { display: block; width: 100%; box-sizing: border-box; margin-top: .35rem; border: 1px solid #cbd3ef; border-radius: 8px; padding: .7rem; font: inherit; color: #10165b; background: white; }
+.rtt-lifecycle-action button { margin-top: .8rem; }
+.rtt-lifecycle-history { margin-top: 1rem; border-left: 3px solid #0c5c9f; padding: .5rem 1rem; background: #f8faff; color: #10165b; }
+.rtt-lifecycle-history p { overflow-wrap: anywhere; }
+
+/* M03E UI polish: scoped to the clinician treatment module; retains RTTRACK navy and white. */
+.rtt-clinician .rtt-plan-register-scroll { width:100%; min-width:0; overflow-x:auto; }
+.rtt-clinician .rtt-plan-register-table { width:100%; min-width:0; table-layout:fixed; }
+.rtt-clinician .rtt-plan-register-table th:nth-child(1) { width:39%; }
+.rtt-clinician .rtt-plan-register-table th:nth-child(2) { width:23%; }
+.rtt-clinician .rtt-plan-register-table th:nth-child(3) { width:17%; }
+.rtt-clinician .rtt-plan-register-table th:nth-child(4) { width:21%; }
+.rtt-clinician .rtt-plan-register-table td,
+.rtt-clinician .rtt-plan-register-table th { padding:12px 7px; vertical-align:middle; overflow-wrap:anywhere; }
+.rtt-clinician .rtt-plan-register-table .rtt-pill { max-width:100%; white-space:normal; overflow-wrap:normal; word-break:normal; text-align:center; }
+.rtt-clinician .rtt-plan-register-selected { background:#f2f6ff; }
+.rtt-clinician .rtt-plan-row-button { width:100%; min-width:0; max-width:130px; padding:9px 7px; white-space:normal; overflow-wrap:normal; line-height:1.3; text-align:center; }
+.rtt-clinician .rtt-plan-title { display:block; font-weight:600; color:#0b125c; }
+.rtt-clinician .rtt-plan-detail { min-width:0; }
+.rtt-clinician .rtt-plan-detail-header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+.rtt-clinician .rtt-plan-detail-name { display:flex; align-items:center; flex-wrap:wrap; min-width:0; gap:10px; color:#0b125c; }
+.rtt-clinician .rtt-plan-detail-name strong { overflow-wrap:anywhere; }
+.rtt-clinician .rtt-plan-close-detail { flex-shrink:0; white-space:normal; }
+.rtt-clinician .rtt-jump-fractions { margin:4px 0 12px; white-space:normal; }
+.rtt-clinician .rtt-plan-close-trigger { margin-top:17px; border-top:1px solid #e5e8f1; padding-top:16px; }
+.rtt-clinician .rtt-plan-close-trigger .rtt-note { margin:7px 0 0; }
+.rtt-clinician .rtt-fraction-records { scroll-margin-top:20px; }
+.rtt-clinician .rtt-fractions-scroll { max-width:100%; }
+.rtt-clinician .rtt-fractions-scroll:focus-visible { outline:3px solid #65b0ed; outline-offset:2px; }
+.rtt-clinician .rtt-row-actions button { white-space:normal; line-height:1.3; text-align:center; overflow-wrap:normal; min-height:42px; }
+
+/* Native dialog gives keyboard focus containment and Escape dismissal. */
+.rtt-closure-dialog { box-sizing:border-box; width:min(94vw,560px); max-width:560px; max-height:min(88dvh,760px); overflow-y:auto; margin:auto; padding:0; color:#252c3e; background:#fff; border:1px solid #cbd0e5; border-radius:14px; box-shadow:0 22px 70px #07134745; }
+.rtt-closure-dialog::backdrop { background:#06113eaa; }
+.rtt-closure-modal-content { padding:clamp(16px,4vw,28px); }
+.rtt-closure-modal-heading { display:flex; align-items:start; justify-content:space-between; gap:12px; }
+.rtt-closure-modal-heading h2 { margin:0; color:#0b125c; font-size:clamp(19px,4vw,25px); }
+.rtt-closure-dialog .rtt-closure-dismiss { min-width:40px; min-height:40px; padding:7px; flex:0 0 auto; }
+.rtt-closure-dialog .rtt-lifecycle-action { margin-top:16px; }
+.rtt-closure-modal-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:10px; margin-top:20px; }
+.rtt-closure-modal-actions button { min-height:44px; white-space:normal; line-height:1.35; }
+.rtt-closure-dialog :is(button,input,textarea,select):focus-visible { outline:3px solid #65b0ed; outline-offset:2px; }
+
+/* Tablet: give the register its full row so table and actions are readable. */
+@media (max-width:1100px) {
+  .rtt-clinician .rtt-manager-grid { grid-template-columns:minmax(0,1fr); }
+  .rtt-clinician .rtt-plan-register-table th:nth-child(1) { width:42%; }
+  .rtt-clinician .rtt-plan-register-table th:nth-child(2) { width:20%; }
+  .rtt-clinician .rtt-plan-register-table th:nth-child(3) { width:18%; }
+  .rtt-clinician .rtt-plan-register-table th:nth-child(4) { width:20%; }
+}
+/* Mobile: use labelled plan and fraction cards rather than squashing table columns. */
+@media (max-width:700px) {
+  .rtt-clinician .rtt-plan-register-scroll, .rtt-clinician .rtt-fractions-scroll { overflow:visible; }
+  .rtt-clinician .rtt-plan-register-table,
+  .rtt-clinician .rtt-fractions-table,
+  .rtt-clinician .rtt-plan-register-table tbody,
+  .rtt-clinician .rtt-fractions-table tbody { display:block; min-width:0; width:100%; }
+  .rtt-clinician .rtt-plan-register-table thead,
+  .rtt-clinician .rtt-fractions-table thead { display:none; }
+  .rtt-clinician .rtt-plan-register-table tr,
+  .rtt-clinician .rtt-fractions-table tr { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px; padding:12px; margin:12px 0; border:1px solid #cbd0e5; border-radius:10px; background:#fff; }
+  .rtt-clinician .rtt-plan-register-table tr.rtt-plan-register-selected { background:#f2f6ff; }
+  .rtt-clinician .rtt-plan-register-table td,
+  .rtt-clinician .rtt-fractions-table td { display:block; min-width:0; width:auto; padding:0; border:0; overflow-wrap:anywhere; }
+  .rtt-clinician .rtt-plan-register-table td::before,
+  .rtt-clinician .rtt-fractions-table td::before { content:attr(data-label); display:block; font-size:11px; letter-spacing:.04em; font-weight:700; text-transform:uppercase; color:#59657c; margin-bottom:5px; }
+  .rtt-clinician .rtt-plan-register-table td:first-child,
+  .rtt-clinician .rtt-fractions-table td:first-child { grid-column:1/-1; }
+  .rtt-clinician .rtt-plan-register-table td:last-child,
+  .rtt-clinician .rtt-fractions-table td:last-child { grid-column:1/-1; }
+  .rtt-clinician .rtt-plan-row-button { max-width:none; min-height:44px; width:100%; }
+  .rtt-clinician .rtt-plan-detail-header { align-items:stretch; }
+  .rtt-clinician .rtt-plan-close-detail { flex:1 1 100%; min-height:44px; }
+  .rtt-clinician .rtt-jump-fractions { width:100%; min-height:44px; }
+  .rtt-clinician .rtt-fractions-table .rtt-row-actions { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px; }
+  .rtt-clinician .rtt-fractions-table .rtt-row-actions label { grid-column:1/-1; min-width:0; }
+  .rtt-clinician .rtt-fractions-table .rtt-row-actions input { max-width:none; }
+  .rtt-closure-modal-actions button { flex:1 1 140px; }
+}
+@media (max-width:370px) {
+  .rtt-clinician .rtt-plan-register-table tr,
+  .rtt-clinician .rtt-fractions-table tr { grid-template-columns:minmax(0,1fr); }
+  .rtt-clinician .rtt-fractions-table .rtt-row-actions { grid-template-columns:minmax(0,1fr); }
+}

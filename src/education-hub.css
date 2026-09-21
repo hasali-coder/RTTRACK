@@ -1,0 +1,93 @@
+/* M06A only. Scoped to .rte-root to preserve RTTRACK's existing portal design. */
+.rte-root { --rte-ink:#0b125c; --rte-blue:#16569b; --rte-line:#cbd5ed; --rte-pale:#eff5ff; color:var(--rte-ink); width:100%; min-width:0; max-width:1160px; margin:0 auto; padding:14px 0 26px; box-sizing:border-box; }
+.rte-root * {box-sizing:border-box;}
+.rte-root .rte-heading {display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px;}
+.rte-root h1 {font-size:clamp(1.65rem,3vw,2.15rem);line-height:1.2;margin:8px 0 8px;color:var(--rte-ink);}
+.rte-root h2 {font-size:1.4rem;line-height:1.3;margin:8px 0 10px;color:var(--rte-ink);}
+.rte-root h3 {font-size:1.14rem;margin:0 0 14px;color:var(--rte-ink);}
+.rte-root h4 {font-size:1.04rem;margin:0 0 9px;color:var(--rte-ink);}
+.rte-root p {line-height:1.55;}
+.rte-root .rte-heading p {margin:0;max-width:690px;color:#374561;}
+.rte-root .rte-eyebrow {font-size:.72rem;letter-spacing:.12em;font-weight:800;color:var(--rte-blue);}
+.rte-root button,.rte-root input,.rte-root select,.rte-root textarea {font:inherit;min-width:0;}
+.rte-root button {cursor:pointer;white-space:normal;overflow-wrap:anywhere;text-align:center;line-height:1.4;}
+.rte-root button:disabled {opacity:.55;cursor:not-allowed;}
+.rte-root .rte-secondary,.rte-root .rte-primary {min-height:42px;display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:9px;padding:10px 15px;text-decoration:none;font-weight:700;}
+.rte-root .rte-secondary {background:#fff;color:var(--rte-ink);border:1px solid var(--rte-ink);}
+.rte-root .rte-primary {background:var(--rte-ink);color:#fff;border:1px solid var(--rte-ink);}
+.rte-root button:focus-visible,.rte-root a:focus-visible,.rte-root input:focus-visible,.rte-root textarea:focus-visible,.rte-root select:focus-visible {outline:3px solid #438bea;outline-offset:2px;}
+.rte-root .rte-notice {display:flex;gap:12px;background:var(--rte-pale);border-left:4px solid var(--rte-blue);border-radius:9px;padding:13px 16px;margin:0 0 22px;align-items:flex-start;}
+.rte-root .rte-notice svg {flex-shrink:0;}
+.rte-root .rte-notice p {font-size:.9rem;margin:0;}
+.rte-root .rte-toolbar {display:grid;grid-template-columns:minmax(180px,2fr) repeat(2,minmax(130px,1fr));gap:12px;margin-bottom:18px;}
+.rte-root .rte-toolbar label,.rte-root .rte-form-grid label,.rte-root .rte-review-form>label:not(.rte-attest) {display:flex;flex-direction:column;gap:6px;font-size:.86rem;font-weight:700;}
+.rte-root .rte-search {position:relative;justify-content:flex-end;}
+.rte-root .rte-search svg {position:absolute;bottom:13px;left:12px;pointer-events:none;}
+.rte-root .rte-search input {padding-left:39px;}
+.rte-root input:not([type=checkbox]),.rte-root select,.rte-root textarea {width:100%;padding:11px 12px;border:1px solid var(--rte-line);border-radius:9px;background:#fff;color:var(--rte-ink);}
+.rte-root textarea {resize:vertical;}
+.rte-root .rte-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;}
+.rte-root .rte-card,.rte-root .rte-editor,.rte-root .rte-reader,.rte-root .rte-admin-item {min-width:0;border:1px solid var(--rte-line);border-radius:13px;background:#fff;padding:20px;}
+.rte-root .rte-card {display:flex;flex-direction:column;gap:9px;}
+.rte-root .rte-card h2 {font-size:1.18rem;margin:0;overflow-wrap:anywhere;}
+.rte-root .rte-card p {margin:0;overflow-wrap:anywhere;}
+.rte-root .rte-card small {color:#475676;}
+.rte-root .rte-card .rte-primary {margin-top:auto;align-self:flex-start;}
+.rte-root .rte-card-top {display:flex;justify-content:space-between;align-items:flex-start;gap:9px;flex-wrap:wrap;font-size:.8rem;font-weight:700;}
+.rte-root .rte-category,.rte-root .rte-language {display:inline-flex;align-items:center;gap:6px;color:#204e84;}
+.rte-root .rte-snippet {color:#394762;white-space:pre-line;}
+.rte-root .rte-reader {margin-top:18px;scroll-margin-top:20px;}
+.rte-root .rte-reader-head,.rte-root .rte-buttons {display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;}
+.rte-root .rte-body {white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;}
+.rte-root .rte-source {display:flex;align-items:flex-start;gap:10px;padding:13px;background:var(--rte-pale);border-radius:9px;overflow-wrap:anywhere;}
+.rte-root .rte-source p {margin:3px 0;}
+.rte-root a {display:inline-flex;align-items:center;gap:5px;color:var(--rte-ink);text-decoration:underline;overflow-wrap:anywhere;}
+.rte-root .rte-empty {padding:28px 15px;text-align:center;border:1px dashed var(--rte-line);border-radius:11px;}
+.rte-root .rte-empty svg {margin:auto;}
+.rte-root .rte-empty h2 {font-size:1.1rem;}
+.rte-root .rte-count,.rte-root .rte-footnote,.rte-root .rte-help {font-size:.86rem;color:#495673;}
+.rte-root .rte-error,.rte-root .rte-success {padding:12px;border-radius:8px;overflow-wrap:anywhere;}
+.rte-root .rte-error {background:#fff1f2;color:#8b1d30;border:1px solid #edbac3;}
+.rte-root .rte-success {background:#e8f8ef;color:#155b36;border:1px solid #9ed7b6;}
+.rte-root .rte-form-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin-bottom:14px;}
+.rte-root .rte-wide {grid-column:1 / -1;}
+.rte-root .rte-editor {margin:20px 0 25px;}
+.rte-root .rte-admin-list {display:grid;gap:13px;}
+.rte-root .rte-admin-item .rte-body {background:#f8faff;padding:12px;border-radius:8px;max-height:320px;overflow:auto;}
+.rte-root .rte-admin-item small {display:block;color:#4e5a72;margin-top:8px;overflow-wrap:anywhere;}
+.rte-root .rte-source-inline,.rte-root .rte-review-note {overflow-wrap:anywhere;font-size:.88rem;}
+.rte-root .rte-status {border-radius:999px;padding:4px 10px;text-transform:capitalize;}
+.rte-root .rte-status-draft {background:#e8f0ff;color:#173f81;}
+.rte-root .rte-status-approved {background:#e0f7e8;color:#185832;}
+.rte-root .rte-status-archived {background:#eceef2;color:#424858;}
+.rte-root .rte-action-area {margin-top:12px;}
+.rte-root .rte-review-form {display:grid;gap:12px;margin-top:12px;padding:14px;background:#f7f9ff;border-radius:8px;}
+.rte-root .rte-attest {display:flex;align-items:flex-start;gap:9px;font-size:.88rem;line-height:1.5;}
+.rte-root .rte-attest input {width:20px;height:20px;flex-shrink:0;margin-top:2px;}
+.rte-root .rte-sr {position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;}
+@media (max-width:850px) {.rte-root .rte-toolbar {grid-template-columns:minmax(0,1fr) minmax(0,1fr);} .rte-root .rte-search {grid-column:1/-1;}}
+@media (max-width:570px) {.rte-root {padding:8px 0 20px;} .rte-root .rte-grid,.rte-root .rte-form-grid,.rte-root .rte-toolbar {grid-template-columns:minmax(0,1fr);} .rte-root .rte-search,.rte-root .rte-wide {grid-column:auto;} .rte-root .rte-card,.rte-root .rte-editor,.rte-root .rte-reader,.rte-root .rte-admin-item {padding:15px;} .rte-root .rte-card .rte-primary,.rte-root .rte-buttons button {width:100%;} .rte-root .rte-heading .rte-secondary {width:100%;} }
+
+/* M06B: compact library + separate in-portal reading screen (patient AND clinician). */
+.rte-library .rte-grid {grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+.rte-library .rte-library-item {gap:7px;padding:15px 17px;}
+.rte-library .rte-library-item h2 {font-size:1.05rem;line-height:1.4;margin:0;}
+.rte-library .rte-library-item small {line-height:1.4;overflow-wrap:anywhere;}
+.rte-library .rte-title-link {width:100%;padding:3px 0;background:transparent;border:0;color:var(--rte-ink);font-weight:800;font-size:inherit;line-height:1.45;text-align:left;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;overflow-wrap:anywhere;}
+.rte-library .rte-title-link svg {flex-shrink:0;margin-top:3px;}
+.rte-library .rte-title-link:hover {text-decoration:underline;text-underline-offset:3px;}
+.rte-library .rte-search input[type="search"] {padding-left:42px;}
+.rte-reading {max-width:1060px;}
+.rte-reading .rte-reader-nav {display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px;}
+.rte-reading .rte-reader-context {font-size:.82rem;color:#475676;}
+.rte-reading .rte-reading-article {background:#fff;border:1px solid var(--rte-line);border-radius:14px;padding:clamp(18px,3vw,34px);}
+.rte-reading .rte-reading-meta {display:flex;flex-wrap:wrap;gap:9px 22px;font-size:.85rem;font-weight:700;color:#204e84;}
+.rte-reading .rte-reading-meta span {display:inline-flex;gap:7px;align-items:center;}
+.rte-reading h1 {max-width:850px;font-size:clamp(1.65rem,3vw,2.3rem);line-height:1.25;overflow-wrap:anywhere;margin:14px 0 22px;}
+.rte-reading h1:focus {outline:none;}
+.rte-reading .rte-notice {max-width:800px;margin-bottom:25px;}
+.rte-reading .rte-reading-body {white-space:pre-wrap;overflow-wrap:anywhere;max-width:74ch;line-height:1.85;font-size:clamp(1rem,1.3vw,1.085rem);color:#24324a;}
+.rte-reading .rte-source {max-width:800px;margin-top:30px;}
+.rte-reading .rte-reading-bottom {display:flex;justify-content:flex-start;margin-top:24px;}
+@media(max-width:760px) {.rte-library .rte-grid {grid-template-columns:minmax(0,1fr);} .rte-reading .rte-reading-article {padding:18px;} }
+@media(max-width:570px) {.rte-reading .rte-reader-nav .rte-secondary,.rte-reading .rte-reading-bottom .rte-secondary {width:100%;} .rte-reading .rte-reader-context {display:none;} .rte-library .rte-library-item {padding:14px;} }

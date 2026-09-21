@@ -1,0 +1,71 @@
+/* RTTRACK Milestone 02 UI refinement. Scoped to the administration page only. */
+.admin-page{display:grid;gap:22px;min-width:0}
+.admin-page .admin-intro{display:flex;align-items:flex-end;justify-content:space-between;gap:24px}
+.workspace .admin-page h1{font-size:32px;line-height:1.2;margin:9px 0 8px;letter-spacing:-.025em}
+.admin-page .admin-intro .muted{margin:0;max-width:720px;font-size:14px;line-height:1.6}
+.admin-page .admin-refresh{display:inline-flex;align-items:center;justify-content:center;gap:9px;white-space:nowrap;flex-shrink:0;padding:11px 16px}
+/* Four compact, equal-width cards in one row on desktop. */
+.admin-page .admin-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0;min-width:0}
+.admin-page .admin-stat-card{min-width:0;min-height:102px;display:flex;flex-direction:column;justify-content:space-between;gap:13px;background:#fff;border:1px solid var(--line,#cbd0e5);border-radius:12px;padding:17px 19px;box-shadow:0 3px 14px #08125206}
+.admin-page .admin-stat-label{display:flex;align-items:center;gap:9px;color:#586071;font-size:13px;line-height:1.3;font-weight:600}
+.admin-page .admin-stat-label svg{color:var(--blue,#0c5c9f);flex-shrink:0}
+.admin-page .admin-stat-card strong{font-size:29px;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:var(--navy,#0b125c)}
+.admin-page .panel.admin-section{margin:0;padding:24px 25px;border-radius:13px;min-width:0}
+.admin-page .admin-section-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:17px}
+.admin-page .admin-section-heading h2{margin:0;color:var(--navy,#0b125c);font-size:19px;line-height:1.4;letter-spacing:-.015em}
+.admin-page .admin-section-heading .muted{font-size:13px;margin:4px 0 0;line-height:1.5}
+.admin-page .admin-count{white-space:nowrap;color:#526078;background:#f3f5fb;border:1px solid #e7eaf3;border-radius:999px;padding:6px 11px;font-size:12px;font-weight:650}
+.admin-page .admin-table-wrap{width:100%;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;border:1px solid #e8ebf4;border-radius:9px}
+.admin-page .admin-table{width:100%;min-width:660px;border-collapse:collapse;table-layout:fixed;text-align:left;font-size:13px}
+.admin-page .admin-table th{background:#f6f8fd;color:#57617a;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.045em;padding:13px 14px;text-align:left;border-bottom:1px solid #e8ebf4}
+.admin-page .admin-table td{padding:15px 14px;border-bottom:1px solid #e8ebf4;vertical-align:middle;color:#30384b;overflow-wrap:anywhere}
+.admin-page .admin-table tr:last-child td{border-bottom:0}
+.admin-page .admin-table th:nth-child(1){width:29%}
+.admin-page .admin-table th:nth-child(2){width:27%}
+.admin-page .admin-table th:nth-child(3){width:16%}
+.admin-page .admin-table th:nth-child(4){width:15%}
+.admin-page .admin-table th:nth-child(5){width:13%}
+.admin-page .admin-applicant-name{display:block;color:var(--navy,#0b125c);font-weight:700;line-height:1.45}
+.admin-page .admin-applicant-email{display:block;color:#606b7e;font-size:12px;line-height:1.55;overflow-wrap:anywhere;margin-top:3px}
+.admin-page .admin-date{white-space:nowrap}
+.admin-page .admin-row-button{padding:8px 13px;font-size:12px}
+.admin-page .admin-status{display:inline-flex;align-items:center;border-radius:999px;padding:5px 10px;font-size:12px;line-height:1.3;text-transform:capitalize;font-weight:650;white-space:nowrap;background:#f3f5fb;color:#596274}
+.admin-page .admin-status--pending{color:#8b5908;background:#fff2d8}
+.admin-page .admin-status--approved{color:#126a36;background:#e9f7ee}
+.admin-page .admin-status--rejected{color:#ae2f31;background:#fff0f0}
+.admin-page .admin-icon-button{display:grid;place-items:center;border:1px solid #d8dded;background:#fff;border-radius:8px;color:var(--navy,#0b125c);width:35px;height:35px;flex:none}
+.admin-page .admin-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin:0;font-size:14px}
+.admin-page .admin-details>div{background:#f8f9fd;border:1px solid #edf0f7;border-radius:9px;padding:13px 15px;min-width:0}
+.admin-page .admin-details dt{font-size:12px;color:#626d82;margin-bottom:7px}
+.admin-page .admin-details dd{font-size:14px;font-weight:600;color:#1d2948;overflow-wrap:anywhere;margin:0;line-height:1.5}
+.admin-page .review-form{display:grid;gap:15px;margin-top:22px;padding-top:18px;border-top:1px solid #e9edf7}
+.admin-page .review-form label{display:grid;gap:8px;font-size:13px;font-weight:650;color:#29334d}
+.admin-page .review-form textarea{width:100%;min-height:100px;resize:vertical;border:1px solid var(--line,#cbd0e5);border-radius:8px;padding:12px;font:inherit;font-weight:400}
+.admin-page .review-form .attestation{display:flex;align-items:flex-start;gap:10px;font-weight:400;line-height:1.5}
+.admin-page .review-form .attestation input{margin-top:4px;flex:none}
+.admin-page .review-buttons{display:flex;flex-wrap:wrap;gap:9px}
+.admin-page .review-buttons .primary{margin:0}
+.admin-page .admin-review-finished{font-size:13px;color:#636f82;margin:16px 0 0}
+.admin-page .admin-history-table{min-width:710px}
+.admin-page .admin-history-table th:nth-child(1){width:23%}
+.admin-page .admin-history-table th:nth-child(2){width:28%}
+.admin-page .admin-history-table th:nth-child(3){width:15%}
+.admin-page .admin-history-table th:nth-child(4){width:34%}
+.admin-page .admin-uuid,.admin-page .admin-evidence{overflow-wrap:anywhere;line-height:1.5}
+.admin-page .admin-empty{margin:0;font-size:13px;color:#6b7384;padding:14px;background:#f9faff;border-radius:8px}
+.admin-page .admin-state{margin:0;color:#59677c}
+.admin-page .admin-disclaimer{margin:0}
+.admin-page button:focus-visible,.admin-page .admin-table-wrap:focus-visible,.admin-page textarea:focus-visible{outline:3px solid #54a8ff;outline-offset:2px}
+/* Smaller screens keep compact cards side by side with horizontal swipe. */
+@media(max-width:800px){
+  .admin-page{gap:17px}
+  .admin-page .admin-intro{display:grid;gap:14px}
+  .workspace .admin-page h1{font-size:27px}
+  .admin-page .admin-refresh{justify-self:start}
+  .admin-page .admin-stats{display:flex;overflow-x:auto;gap:10px;padding:0 0 7px;scroll-snap-type:x proximity;overscroll-behavior-x:contain;scrollbar-width:thin}
+  .admin-page .admin-stat-card{flex:0 0 185px;min-height:96px;padding:15px;scroll-snap-align:start}
+  .admin-page .panel.admin-section{padding:19px 16px}
+  .admin-page .admin-details{grid-template-columns:1fr}
+  .admin-page .admin-section-heading h2{font-size:18px}
+}
+@media(prefers-reduced-motion:reduce){.admin-page .admin-stats{scroll-behavior:auto}}

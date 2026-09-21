@@ -1,0 +1,13 @@
+/* Scoped RTTRACK navy and white notification-preference panel. */
+.rtn-card{background:#fff;border:1px solid #cbd0e5;border-radius:14px;padding:23px;display:grid;gap:16px;min-width:0}
+.rtn-card h3{display:flex;gap:10px;align-items:center;color:#0b125c;font-size:17px;margin:0}
+.rtn-card p{margin:0;color:#59657b;line-height:1.55}
+.rtn-offline{background:#eaf2ff;border-left:3px solid #0c5c9f;border-radius:8px;padding:12px 14px;font-size:13px}
+.rtn-toggle{display:flex;justify-content:space-between;align-items:flex-start;gap:15px;padding:14px 0;border-top:1px solid #e2e5f1;cursor:pointer;min-width:0}
+.rtn-toggle>span{display:grid;gap:5px;min-width:0;overflow-wrap:anywhere}
+.rtn-toggle strong{color:#0b125c;font-size:14px}
+.rtn-toggle small{color:#626c7d;font-size:12px;line-height:1.45}
+.rtn-toggle input{width:20px;height:20px;flex:none;accent-color:#0b125c;cursor:pointer}
+.rtn-toggle input:disabled{cursor:wait;opacity:.6}
+.rtn-status{font-size:12px;color:#626c7d}
+@media(max-width:500px){.rtn-card{padding:17px}.rtn-toggle{gap:10px}}

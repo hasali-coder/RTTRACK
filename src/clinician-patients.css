@@ -1,0 +1,85 @@
+/* Scoped to clinician Patients. Existing portals and clinician dashboard are unchanged. */
+.workspace:has(> .rtcp-root){max-width:none;padding:clamp(18px,2.4vw,38px)}
+.workspace:has(> .rtcp-root) .rtcp-root{width:100%;max-width:1560px;margin:0 auto}
+.rtcp-root{--rtcp-navy:#0b125c;--rtcp-blue:#125b9a;--rtcp-line:#cbd5ef;--rtcp-muted:#536380;color:#182345;min-width:0;font-size:14px}
+.rtcp-root *{box-sizing:border-box}
+.rtcp-root button,.rtcp-root input,.rtcp-root select{font:inherit}
+.rtcp-root button{cursor:pointer}
+.rtcp-root button:focus-visible,.rtcp-root input:focus-visible,.rtcp-root select:focus-visible{outline:3px solid #59a3ff;outline-offset:2px}
+.rtcp-root button:disabled{opacity:.55;cursor:not-allowed}
+.rtcp-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:19px}
+.rtcp-eyebrow{display:block;font-size:11px;font-weight:800;color:var(--rtcp-blue);letter-spacing:1.3px;margin-bottom:7px}
+.rtcp-heading h1{color:var(--rtcp-navy);font-size:clamp(25px,2.7vw,35px);margin:0 0 9px;line-height:1.25}
+.rtcp-heading p{color:var(--rtcp-muted);line-height:1.55;max-width:760px;margin:0}
+.rtcp-outline,.rtcp-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;text-align:center;min-height:42px;max-width:100%;padding:10px 13px;border-radius:9px;font-size:13px!important;font-weight:750!important;overflow-wrap:anywhere;white-space:normal;text-decoration:none}
+.rtcp-outline{border:1px solid var(--rtcp-navy);color:var(--rtcp-navy);background:#fff}
+.rtcp-outline:hover{background:#eef4ff}
+.rtcp-primary{border:1px solid var(--rtcp-navy);color:#fff;background:var(--rtcp-navy)}
+.rtcp-primary:hover{background:#1b327d}
+.rtcp-outline svg,.rtcp-primary svg{flex-shrink:0}
+.rtcp-heading>.rtcp-outline{flex-shrink:0}
+.rtcp-safety,.rtcp-notice,.rtcp-error{display:flex;align-items:flex-start;gap:10px;border-radius:9px;padding:14px 16px;line-height:1.55;margin:0 0 17px}
+.rtcp-safety{background:#eef4ff;border-left:3px solid var(--rtcp-blue);color:#264772}
+.rtcp-safety svg{flex-shrink:0}
+.rtcp-notice{background:#fff9e9;border:1px solid #e9d19d;color:#61480c}
+.rtcp-error{display:block;border:1px solid #edb9b9;background:#fff4f4;color:#812828;overflow-wrap:anywhere}
+.rtcp-link{border:0;background:transparent;color:inherit;text-decoration:underline;font-weight:700}
+.rtcp-toolbar{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:17px}
+.rtcp-toolbar strong,.rtcp-toolbar span{display:block}
+.rtcp-toolbar strong{font-size:17px;color:var(--rtcp-navy)}
+.rtcp-toolbar span{font-size:12px;color:var(--rtcp-muted);margin-top:4px}
+.rtcp-grid{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);align-items:start;gap:17px}
+.rtcp-panel{min-width:0;background:#fff;border:1px solid var(--rtcp-line);border-radius:13px;padding:20px;box-shadow:0 5px 20px #0b125c08}
+.rtcp-panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:16px}
+.rtcp-panel-head h2{font-size:19px;color:var(--rtcp-navy);line-height:1.35;margin:0;overflow-wrap:anywhere}
+.rtcp-panel-head>span{font-size:12px;color:var(--rtcp-muted)}
+.rtcp-controls{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:10px;margin-bottom:15px}
+.rtcp-controls label{min-width:0;display:grid;gap:7px;font-size:12px;font-weight:700;color:var(--rtcp-navy)}
+.rtcp-controls input,.rtcp-controls select{min-width:0;width:100%;background:#fff;color:#182345;border:1px solid var(--rtcp-line);border-radius:8px;min-height:42px;padding:9px 10px;font-size:13px}
+.rtcp-controls .rtcp-search>div{display:flex;align-items:center;gap:7px;border:1px solid var(--rtcp-line);border-radius:8px;padding-left:10px}
+.rtcp-controls .rtcp-search>div svg{color:var(--rtcp-muted);flex-shrink:0}
+.rtcp-controls .rtcp-search>div input{border:0;min-width:0;padding-left:0}
+.rtcp-controls .rtcp-search>div:focus-within{outline:3px solid #59a3ff;outline-offset:2px}
+.rtcp-controls .rtcp-search>div input:focus-visible{outline:none}
+.rtcp-list{display:grid}
+.rtcp-person{min-width:0;border-top:1px solid #e3e9f6;padding:15px 2px;display:grid;gap:10px}
+.rtcp-person-selected{background:#f6f9ff;border-radius:8px;padding:15px 10px}
+.rtcp-person-main{display:flex;align-items:center;gap:10px;min-width:0}
+.rtcp-avatar{display:inline-flex;align-items:center;justify-content:center;width:37px;height:37px;flex-shrink:0;border-radius:50%;background:#eaf1ff;color:var(--rtcp-blue)}
+.rtcp-person-main>div{min-width:0}
+.rtcp-person-main strong,.rtcp-person-main small{display:block;overflow-wrap:anywhere}
+.rtcp-person-main strong{font-size:14px;color:var(--rtcp-navy)}
+.rtcp-person-main small{color:var(--rtcp-muted);margin-top:5px;font-size:12px}
+.rtcp-person-actions{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.rtcp-person-actions .rtcp-outline{min-width:123px}
+.rtcp-dot{display:inline-flex;align-items:center;border-radius:20px;padding:5px 9px;background:#f0f3fa;color:#425270;font-size:11px;font-weight:800;line-height:1.4;max-width:100%;overflow-wrap:anywhere}
+.rtcp-active,.rtcp-allowed{color:#195b35;background:#e5f7eb}
+.rtcp-empty{padding:20px;border-radius:9px;background:#f8faff;border:1px dashed var(--rtcp-line);color:var(--rtcp-muted);line-height:1.55}
+.rtcp-empty p{margin:0 0 13px}
+.rtcp-details-empty{min-height:270px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:var(--rtcp-muted);gap:11px}
+.rtcp-details-empty svg{color:var(--rtcp-blue)}
+.rtcp-details-empty h2{margin:0;color:var(--rtcp-navy);font-size:19px}
+.rtcp-details-empty p{max-width:360px;line-height:1.55;margin:0}
+.rtcp-details-head .rtcp-outline{flex-shrink:0}
+.rtcp-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin:0 0 23px}
+.rtcp-facts>div{background:#f8faff;border:1px solid #e3e9f6;border-radius:9px;padding:12px;min-width:0}
+.rtcp-facts dt{font-size:12px;color:var(--rtcp-muted);margin-bottom:6px}
+.rtcp-facts dd{font-size:13px;font-weight:700;color:var(--rtcp-navy);margin:0;overflow-wrap:anywhere}
+.rtcp-details h3{font-size:16px;color:var(--rtcp-navy);margin:19px 0 11px}
+.rtcp-access{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.rtcp-access article{border:1px solid var(--rtcp-line);border-radius:10px;padding:14px;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:11px}
+.rtcp-access article>div{display:flex;align-items:center;gap:8px;color:var(--rtcp-navy)}
+.rtcp-access article>div svg{color:var(--rtcp-blue);flex-shrink:0}
+.rtcp-access article p{font-size:12px;color:var(--rtcp-muted);line-height:1.5;margin:0;flex:1}
+.rtcp-access article .rtcp-outline{width:100%}
+.rtcp-plans{margin-top:19px}
+.rtcp-plan{padding:13px 0;border-top:1px solid #e3e9f6}
+.rtcp-plan>div{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:9px}
+.rtcp-plan strong{overflow-wrap:anywhere;color:var(--rtcp-navy);max-width:100%}
+.rtcp-plan p{font-size:12px;color:var(--rtcp-muted);line-height:1.5;margin:8px 0 0}
+.rtcp-status{display:inline-flex;border-radius:20px;padding:5px 9px;background:#eef4ff;color:var(--rtcp-navy);font-size:11px;font-weight:800;text-transform:capitalize}
+.rtcp-guidance{font-size:12px;line-height:1.55;color:var(--rtcp-muted);margin:18px 0 0}
+.rtcp-caution{font-size:12px;color:#684d14;border:1px solid #eedbb1;background:#fffbec;padding:11px;border-radius:8px;margin:16px 0 0}
+@media(max-width:1180px){.rtcp-grid{grid-template-columns:minmax(0,1fr)}.rtcp-details-empty{min-height:155px}}
+@media(max-width:690px){.workspace:has(> .rtcp-root){padding:18px 14px}.rtcp-heading,.rtcp-toolbar{flex-direction:column;align-items:stretch}.rtcp-heading>.rtcp-outline{align-self:flex-start}.rtcp-panel{padding:15px}.rtcp-controls{grid-template-columns:minmax(0,1fr)}.rtcp-facts{grid-template-columns:minmax(0,1fr)}.rtcp-access{grid-template-columns:minmax(0,1fr)}.rtcp-details-head{flex-wrap:wrap}.rtcp-details-head .rtcp-outline{width:100%}}
+@media(max-width:390px){.rtcp-person-actions{align-items:stretch}.rtcp-person-actions .rtcp-outline{width:100%}}
