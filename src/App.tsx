@@ -25,7 +25,7 @@ export default function App() {
   const [application, setApplication] = useState<Application | null>(null);
   const [patientProfile, setPatientProfile] = useState<PatientProfile | null>(null);
   const [patientLookupFailed, setPatientLookupFailed] = useState(false);
-  const [mode, setMode] = useState<Mode>('register');
+  const [mode, setMode] = useState<Mode>('login');
   const [busy, setBusy] = useState(true);
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState('');
