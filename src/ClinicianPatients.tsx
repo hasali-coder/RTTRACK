@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
-import { ArrowLeft, ArrowRight, BookOpenCheck, CalendarDays, HeartPulse, RefreshCw, Search, ShieldCheck, Users } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpenCheck, CalendarDays, HeartPulse, RefreshCw, Search, Users } from 'lucide-react';
 import { supabase } from './supabase';
 import './clinician-patients.css';
 
