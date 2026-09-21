@@ -7,9 +7,6 @@ RTTRACK is a patient-centred, AI-enabled digital platform designed to support ra
 **Full Title:**  
 RTTRACK: A Patient Centred, AI Enabled Mobile Application for Supporting Radiotherapy Adherence in Kenya, A Feasibility and Acceptability Evaluation
 
-**Conference:** RASCO 2026 Scientific Conference  
-**Organiser:** Society of Radiography in Kenya  
-**Affiliator:** B.Rad John Jaote  
 
 
 ## Overview
