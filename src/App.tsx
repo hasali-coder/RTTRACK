@@ -203,7 +203,7 @@ export default function App() {
       {mode !== 'patient-register' && <button className="text-button" onClick={() => { setMode('patient-register'); setError(''); setMessage(''); }}>Register as patient</button>}
       {mode !== 'register' && <button className="text-button" onClick={() => { setMode('register'); setError(''); setMessage(''); }}>Register as doctor</button>}
     </div>
-    <p className="fine-print">Development only. Use fictional test identities. Never enter actual patient records or health information.</p>
+    <p className="fine-print">v1 Prototype</p>
   </section></main>;
 
   const approved = application?.status === 'approved';
