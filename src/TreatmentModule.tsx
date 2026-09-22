@@ -199,7 +199,9 @@ export function TreatmentTracker({ userId }: { userId: string }) {
   </div>;
 }
 
-export function ClinicianTreatmentManager({ userId }: { userId: string }) {
+// RTTRACK_CONTEXT_FOCUS_V1 — scoped plan navigation; does not alter treatment RPCs.
+type TreatmentFocus = { planId?: string; patientId?: string; status?: 'draft' | 'active'; fractionNumber?: number };
+export function ClinicianTreatmentManager({ userId, focus }: { userId: string; focus?: TreatmentFocus }) {
   const { plans, loading, error, refresh } = usePlans(userId);
   const [patients, setPatients] = useState<LinkedPatient[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState('');
@@ -219,6 +221,7 @@ export function ClinicianTreatmentManager({ userId }: { userId: string }) {
   const [message, setMessage] = useState('');
   const [actionError, setActionError] = useState('');
   const [patientError, setPatientError] = useState('');
+  const [focusMessage, setFocusMessage] = useState('');
   const [closureOutcome, setClosureOutcome] = useState<'completed' | 'discontinued'>('completed');
   const [closureReason, setClosureReason] = useState('');
   const [closureConfirm, setClosureConfirm] = useState('');
@@ -259,6 +262,22 @@ export function ClinicianTreatmentManager({ userId }: { userId: string }) {
     else { setPatientError(''); setPatients((result.data ?? []) as LinkedPatient[]); }
   }, [userId]);
   useEffect(() => { void reloadPatients(); }, [reloadPatients]);
+  // A dashboard plan link is resolved ONLY against permission-scoped lists.
+  useEffect(() => {
+    if (!focus?.planId || loading || !!error || !!patientError) return;
+    const plan = plans.find(p => p.plan_id === focus.planId);
+    if (!plan || (focus.patientId && plan.patient_id !== focus.patientId) ||
+        !patients.some(p => p.patient_id === plan.patient_id)) {
+      setFocusMessage('This plan is unavailable or you no longer have permission to view it.');
+      return;
+    }
+    setFocusMessage(focus.fractionNumber != null ? `Opened ${plan.title}. Find fraction ${focus.fractionNumber} in its records.` : `Opened ${plan.title}.`);
+    setPatientId(plan.patient_id);
+    setSelectedPlanId(plan.plan_id);
+  }, [focus, loading, error, patientError, plans, patients]);
+  const focusedPlans = focus?.status && !focus.planId
+    ? plans.filter(p => p.status === focus.status && patients.some(patient => patient.patient_id === p.patient_id) &&
+       (focus.status !== 'draft' || p.created_by === userId)) : [];
   const ownedPlan = selected?.created_by === userId;
   const linkedPatientIds = useMemo(() => new Set(patients.map(p=>p.patient_id)), [patients]);
   const canEdit = !!selected && ownedPlan && linkedPatientIds.has(selected.patient_id);
@@ -366,16 +385,27 @@ export function ClinicianTreatmentManager({ userId }: { userId: string }) {
   }
 
   return <div className="rtt-module rtt-clinician">
-    <div className="rtt-page-header"><div><span className="rtt-eyebrow">CLINICIAN PORTAL · TREATMENT</span><h1>Treatment management</h1>
-      <p>Create and publish clinician-entered plans, schedule fractions and record actual delivery.</p></div>
+    {focusMessage && <p className="rtt-note" role="status">{focusMessage}</p>}
+    {focus?.status && !focus.planId && <section className="rtt-card" aria-label="Plans selected from dashboard">
+      <h2>{focus.status === 'draft' ? 'My draft plans' : 'Active treatment plans'}</h2>
+      {loading ? <p>Loading plans…</p> : error || patientError ?
+        <p role="alert">The selected plans could not be loaded. Refresh to retry.</p> : focusedPlans.length === 0 ?
+        <p>No accessible {focus.status} plans were found.</p> :
+        <div className="rtt-table-scroll"><table className="rtt-table"><thead><tr><th scope="col">Patient</th><th scope="col">Plan</th><th scope="col">Status</th><th scope="col">Action</th></tr></thead>
+          <tbody>{focusedPlans.map(p => <tr key={p.plan_id}><td>{p.patient_name}</td><td>{p.title}</td><td>{p.status}</td>
+            <td><button type="button" className="rtt-outline" onClick={() => { setPatientId(p.patient_id); setSelectedPlanId(p.plan_id); setFocusMessage(`Opened ${p.title}.`); }}>Open plan</button></td>
+          </tr>)}</tbody></table></div>}
+    </section>}
+    <div className="rtt-page-header"><div><span className="rtt-eyebrow">DOCTOR PORTAL · TREATMENT</span><h1>Treatment management</h1>
+      <p>Create and publish doctor-entered plans, schedule fractions and record actual delivery.</p></div>
       <button type="button" className="rtt-outline" onClick={() => {void refresh(); void refreshSessions(); void reloadPatients();}}><RefreshCw size={17}/> Refresh</button></div>
-    <div className="rtt-callout"><ShieldCheck size={20}/><span>Fictional development data only. Verify every entered prescription against the clinical source. RTTRACK does not calculate or recommend treatment doses.</span></div>
+    
     {message && <p className="rtt-success" role="status">{message}</p>}{actionError && <p className="rtt-error" role="alert">{actionError}</p>}
     {error && <p className="rtt-error" role="alert">{error}</p>}{patientError && <p className="rtt-error" role="alert">{patientError}</p>}
     <div className="rtt-manager-grid">
       <section className="rtt-card"><h3><Stethoscope size={20}/> Create a draft plan</h3>
-        <p className="rtt-note">Only patients with an active connection AND separate treatment-record consent appear. Administrator status alone does not give treatment access.</p>
-        {patients.length === 0 ? <p>No patients have authorised treatment-record access. Connect with a patient, then ask them to enable the separate permission in Connections.</p> :
+        <p className="rtt-note">Only patients with an active connection and authorised treatment sharing appear.</p>
+        {patients.length === 0 ? <p>No patients have authorised treatment-record access. Connect with a patient and confirm they have authorised treatment sharing.</p> :
           <form className="rtt-form" onSubmit={createPlan}>
             <label>Connected patient<select required value={patientId} onChange={e=>{setPatientId(e.target.value);setCloseModalOpen(false);setSelectedPlanId('');setFractionNumber('');setScheduledFor('');setLocation('');setDoses({});setActionError('');setMessage('');}}><option value="">Select a connected patient</option>
               {patients.map(p=><option key={p.patient_id} value={p.patient_id}>{p.full_name}</option>)}</select></label>
@@ -463,6 +493,6 @@ export function ClinicianTreatmentManager({ userId }: { userId: string }) {
               <span className="rtt-note">{s.status === 'scheduled' ? 'Scheduled / read-only' : 'Recorded'}</span>}</td></tr>)}
         </tbody></table></div>}
     </section>}
-    <p className="rtt-note">This is a development prototype, not a treatment-planning, prescribing or dose-verification system. Use fictional records only.</p>
+    
   </div>;
 }

@@ -72,3 +72,15 @@
 @media(max-width:1230px){.rtcd-main-grid{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:650px){.workspace:has(> .rtcd-root){padding:20px 16px}.rtcd-header{flex-direction:column;align-items:stretch;gap:14px}.rtcd-outline{align-self:flex-start}.rtcd-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.rtcd-metric{padding:14px;min-height:185px}.rtcd-card{padding:17px}.rtcd-section-head{flex-wrap:wrap}.rtcd-date{align-items:flex-start}.rtcd-chart-summary strong{font-size:27px}.rtcd-chart-viewport{overflow-x:auto}.rtcd-chart-viewport svg{min-width:570px}.rtcd-chart-swipe{display:block}}
 @media(max-width:440px){.rtcd-metrics{grid-template-columns:minmax(0,1fr)}.rtcd-metric{min-height:0}.rtcd-plan-top{flex-wrap:wrap}}
+
+/* Keep appointment and plan cards at matching heights as records accumulate. */
+.rtcd-main-grid { align-items:stretch; }
+.rtcd-main-grid > .rtcd-fixed-card { height:350px; min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+.rtcd-fixed-card > .rtcd-section-head { flex:0 0 auto; }
+.rtcd-fixed-card > .rtcd-scroll-list { display:block; flex:1 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; scrollbar-width:thin; padding-right:5px; }
+.rtcd-fixed-card > .rtcd-empty { overflow-y:auto; }
+.rtcd-scroll-list:focus-visible { outline:2px solid #125b9a; outline-offset:-2px; }
+.rtcd-appointment { gap:3px; padding:10px 0; }
+.rtcd-plan { padding:10px 0; }
+.rtcd-progress-label { margin:9px 0 5px; }
+@media (max-width:650px) { .rtcd-main-grid > .rtcd-fixed-card { height:340px; } }

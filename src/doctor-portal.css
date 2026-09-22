@@ -1,0 +1,26 @@
+/* Doctor portal shell only. The navigation scrolls; account actions stay reachable. */
+.app-shell > .sidebar { display:flex; flex-direction:column; min-height:0; height:100dvh; position:sticky; top:0; overflow:hidden; }
+.app-shell > .sidebar > .brand, .app-shell > .sidebar > .identity { flex:0 0 auto; }
+.app-shell > .sidebar > nav { display:flex; flex-direction:column; gap:6px; min-height:0; overflow-y:auto; overscroll-behavior:contain; flex:1 1 auto; scrollbar-width:thin; }
+.app-shell > .sidebar > .sidebar-bottom { flex:0 0 auto; margin-top:auto; padding-top:10px; background:#0b125c; }
+@media (max-width:800px) { .app-shell > .sidebar { position:fixed; top:0; bottom:0; left:0; height:100dvh; max-height:100dvh; } }
+/* Expandable administration navigation; leaves sidebar account actions pinned. */
+.app-shell > .sidebar > nav .rtadm-subnav {display:grid;gap:4px;padding:0 0 8px 26px;flex:0 0 auto;}
+.app-shell > .sidebar > nav .rtadm-subnav .nav-link{width:100%;font-size:13px;min-height:39px;padding:9px 11px;}
+.app-shell > .sidebar > nav .rtadm-parent{display:flex;align-items:center;justify-content:space-between;gap:6px;}
+.app-shell > .sidebar > nav .rtadm-parent .rtadm-chevron{margin-left:auto;flex-shrink:0;}
+.app-shell > .sidebar > nav button:focus-visible{outline:2px solid #a2cbff;outline-offset:-2px;}
+
+/* Compact connection filter */
+.rtc-status-filter{display:flex;align-items:center;gap:7px;font-size:12px;color:#455779}.rtc-status-filter select{border:1px solid #cbd5ec;border-radius:7px;background:#fff;color:#0b125c;padding:6px 8px;max-width:155px;min-width:0}.rtc-list-heading{flex-wrap:wrap;gap:8px}
+
+/* Close mobile navigation when the user taps outside it; desktop is unaffected. */
+.rttrack-mobile-backdrop { display:none; }
+@media (max-width:800px) {
+  .app-shell > .sidebar.open { z-index:1101; }
+  .app-shell > .rttrack-mobile-backdrop:not([hidden]) {
+    display:block; position:fixed; inset:0; z-index:1100;
+    width:100vw; height:100dvh; border:0; padding:0;
+    background:rgba(8,18,44,.40); cursor:default;
+  }
+}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { Link2, RefreshCw, ShieldCheck, UserPlus } from 'lucide-react';
+import { Link2, RefreshCw, UserPlus } from 'lucide-react';
 import { supabase } from './supabase';
 import './connections.css';
 
@@ -12,9 +12,9 @@ type Connection = {
   is_primary: boolean; patient_consented_at: string | null; created_at: string;
 };
 type SharingRecord = { link_id: string; allowed: boolean; allowed_at: string | null };
-type Props = { role: Role; userId: string };
+type Props = { role: Role; userId: string; initialFilter?: 'pending' | 'active' };
 
-export default function ConnectionsPanel({ role, userId }: Props) {
+export default function ConnectionsPanel({ role, userId, initialFilter }: Props) {
   const [connections, setConnections] = useState<Connection[]>([]);
   const [directory, setDirectory] = useState<DirectoryEntry[]>([]);
   const [discoverable, setDiscoverable] = useState(false);
@@ -26,6 +26,8 @@ export default function ConnectionsPanel({ role, userId }: Props) {
   const [sharingConfirmed, setSharingConfirmed] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [selectedLinkId, setSelectedLinkId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'active'>(initialFilter ?? 'all');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -52,6 +54,7 @@ export default function ConnectionsPanel({ role, userId }: Props) {
     finally { setLoading(false); }
   }, [role]);
   useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { setStatusFilter(initialFilter ?? 'all'); setSelectedLinkId(null); }, [initialFilter]);
 
   async function execute(action: (client: NonNullable<typeof supabase>) => Promise<{ error: { message: string } | null }>, success: string) {
     const client = supabase;
@@ -78,23 +81,23 @@ export default function ConnectionsPanel({ role, userId }: Props) {
     if (!supabase || !consent) return;
     await execute(async (client) => client.rpc('rttrack_patient_request_clinician', {
       p_clinician_id: id, p_consent: true,
-    }), 'Connection request submitted. Awaiting clinician acceptance.');
+    }), 'Connection and treatment-record sharing requested. Awaiting doctor acceptance.');
     setConsent(false);
   }
   async function respond(link: Connection, accept: boolean) {
     if (!supabase) return;
     const patientConsent = role === 'patient' && consentFor.includes(link.id);
     if (accept && role === 'patient' && !patientConsent) {
-      setError('Please explicitly confirm consent for this connection.'); return;
+      setError('Please confirm the connection and treatment-record consent.'); return;
     }
     await execute(async (client) => client.rpc('rttrack_respond_link', {
       p_link_id: link.id, p_accept: accept, p_patient_consent: patientConsent,
-    }), accept ? 'Connection accepted.' : 'Request declined.');
+    }), accept ? 'Connection accepted; treatment sharing follows the patient’s authorisation.' : 'Request declined.');
     setConsentFor(old => old.filter(id => id !== link.id));
   }
   async function changeSharing(link: Connection, allow: boolean) {
     if (role !== 'patient' || link.status !== 'active' || !supabase) return;
-    if (allow && !sharingConfirmed.includes(link.id)) { setError('Check the separate treatment-record consent first.'); return; }
+    if (allow && !sharingConfirmed.includes(link.id)) { setError('Confirm treatment-record access before granting it.'); return; }
     if (!allow && !window.confirm('Withdraw this clinician’s access to treatment records? This will block new clinician access and updates; your own published plan stays visible to you.')) return;
     await execute(async client => client.rpc('rttrack_set_treatment_sharing', { p_link_id: link.id, p_allow: allow }),
       allow ? 'Treatment-record sharing authorised for this clinician.' : 'Treatment-record sharing withdrawn.');
@@ -103,74 +106,75 @@ export default function ConnectionsPanel({ role, userId }: Props) {
   const openPairIds = new Set(connections.filter(l => l.status === 'pending' || l.status === 'active')
     .map(l => l.clinician_id));
   const visible = directory.filter(item => `${item.full_name} ${item.institution}`.toLowerCase().includes(search.toLowerCase()));
-  return <section className="rtc-panel" aria-label="Patient–clinician connections">
-    <div className="rtc-heading"><div><span className="rtc-eyebrow">RTTRACK · CARE CONNECTIONS</span><h2>{role === 'patient' ? 'My care team' : 'Patient connections'}</h2><p>Development only · Use fictional identities. A connection alone never grants treatment-record access. Patients can separately opt in below.</p></div>
-      <button type="button" className="rtc-outline" onClick={() => void refresh()} disabled={loading || saving}><RefreshCw size={16}/> Refresh</button></div>
+  const selected = connections.find(link => link.id === selectedLinkId) ?? null;
+  const otherName = (link: Connection) => role === 'patient' ? link.clinician_name : link.patient_name;
+
+  return <section className="rtc-panel" aria-label="Care connections">
+    <div className="rtc-heading"><div><span className="rtc-eyebrow">RTTRACK · CARE CONNECTIONS</span><h2>{role === 'patient' ? 'My care team' : 'Patient connections'}</h2></div>
+      <button type="button" className="rtc-outline" onClick={() => void refresh()} disabled={loading || saving}><RefreshCw size={16} aria-hidden="true"/> Refresh</button></div>
     {error && <p className="rtc-error" role="alert">{error}</p>}
     {message && <p className="rtc-success" role="status">{message}</p>}
-    {loading ? <p role="status">Loading connections…</p> : <>
-      <div className="rtc-grid">
-        {role === 'patient' ? <section className="rtc-card"><h3><UserPlus size={20}/> Find a clinician</h3>
-          <p>Only approved clinicians who have opted into the directory appear here.</p>
-          <label className="rtc-label">Search name or institution<input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search clinicians" /></label>
-          <label className="rtc-consent"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)}/>
-            I consent to sending my name and connection request to the selected clinician. I understand this does not share treatment records.</label>
-          {visible.length === 0 ? <p>No discoverable clinicians found. An approved clinician must opt into the directory first.</p> : visible.map(item =>
+    {loading ? <p role="status">Loading connections…</p> : <div className="rtc-grid">
+      {role === 'patient' ? <section className="rtc-card" aria-labelledby="rtc-discovery-title">
+        <h3 id="rtc-discovery-title"><UserPlus size={19} aria-hidden="true"/> Find a doctor</h3>
+        <label className="rtc-label">Search by name or institution<input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search doctors" /></label>
+        <div className="rtc-directory" role="region" aria-label="Available doctors" tabIndex={0}>
+          {visible.length === 0 ? <p>No doctors currently available in the directory.</p> : visible.map(item =>
             <div className="rtc-person" key={item.clinician_id}><div><strong>{item.full_name}</strong><small>{item.institution}</small></div>
               <button type="button" className="rtc-primary" disabled={!consent || saving || openPairIds.has(item.clinician_id)} onClick={() => void requestClinician(item.clinician_id)}>
-                {openPairIds.has(item.clinician_id) ? 'Already connected/requested' : 'Request connection'}</button></div>)}
-        </section> : <section className="rtc-card"><h3><UserPlus size={20}/> Clinician directory and requests</h3>
-          <p>Directory listing is optional. Patients can only find you if you choose to be discoverable.</p>
-          <label className="rtc-consent"><input type="checkbox" checked={discoverable} disabled={saving} onChange={e => {
-            if (!supabase) return;
-            void execute(async (client) => client.rpc('rttrack_set_discoverable', { p_discoverable: e.target.checked }),
-              'Your directory preference has been saved.');
-          }}/> Show my name and self-reported institution in the patient directory</label>
-          <form onSubmit={e => void requestPatient(e)} className="rtc-form"><label className="rtc-label">Patient email (provided to you by the patient)
-            <input type="email" required value={patientEmail} onChange={e => setPatientEmail(e.target.value)} placeholder="patient@example.com" maxLength={254}/></label>
-            <button type="submit" className="rtc-primary" disabled={saving || !patientEmail.trim()}>Request connection</button></form>
-          <p className="rtc-help">For privacy, RTTRACK does not reveal whether an email matches an account. The patient must consent before a clinician-initiated request becomes active.</p>
-        </section>}
-        <section className="rtc-card"><h3><Link2 size={20}/> My connections</h3>
-          {connections.length === 0 ? <p>No connection requests yet.</p> : connections.map(link => {
-            const recipient = link.initiated_by !== userId;
-            const other = role === 'patient' ? link.clinician_name : link.patient_name;
-            return <div className="rtc-link" key={link.id}><div className="rtc-link-top"><div><strong>{other}</strong>
-              <small>{role === 'patient' ? link.institution : 'Patient'} · {new Date(link.created_at).toLocaleDateString()}</small></div>
-              <span className={`rtc-pill rtc-${link.status}`}>{link.status}{link.is_primary ? ' · Primary' : ''}</span></div>
-              {link.status === 'pending' && recipient && <div className="rtc-actions">
-                {role === 'patient' && <label className="rtc-consent"><input type="checkbox" checked={consentFor.includes(link.id)} onChange={e => setConsentFor(old => e.target.checked ? [...old,link.id] : old.filter(id => id !== link.id))}/>
-                  I consent to connecting with this clinician. This does not yet grant access to treatment records.</label>}
-                <button type="button" className="rtc-primary" disabled={saving || (role === 'patient' && !consentFor.includes(link.id))} onClick={() => void respond(link,true)}>Accept</button>
-                <button type="button" className="rtc-outline" disabled={saving} onClick={() => void respond(link,false)}>Decline</button></div>}
-              {link.status === 'pending' && !recipient && <p className="rtc-help">Awaiting the other person's response.</p>}
-              {link.status === 'active' && <div className="rtc-sharing-box">
-                <strong>Treatment-record sharing: {sharing[link.id] ? 'Allowed' : 'Not authorised'}</strong>
-                {role === 'patient' ? <>
-                  <p className="rtc-help">This is separate from agreeing to connect. When allowed, this clinician may view your RTTRACK treatment plan, prescribed dose and fraction/appointment records and, if they authored the plan, record sessions. You can withdraw permission at any time. Your own published plan remains available to you.</p>
-                  {!sharing[link.id] && <label className="rtc-consent"><input type="checkbox" checked={sharingConfirmed.includes(link.id)} onChange={e => setSharingConfirmed(previous => e.target.checked ? [...previous, link.id] : previous.filter(id => id !== link.id))}/>
-                    I explicitly authorise {link.clinician_name} to access my RTTRACK treatment-plan and session records for this development test.</label>}
-                  <button type="button" className={sharing[link.id] ? 'rtc-outline' : 'rtc-primary'} disabled={saving || (!sharing[link.id] && !sharingConfirmed.includes(link.id))}
-                    onClick={() => void changeSharing(link, !sharing[link.id])}>{sharing[link.id] ? 'Withdraw treatment-record access' : 'Allow treatment-record access'}</button>
-                </> : <p className="rtc-help">{sharing[link.id] ? 'The patient has separately authorised treatment-record access.' : 'The patient has not authorised treatment-record access. You cannot create or view their treatment plan yet.'}</p>}
-              </div>}
-              {link.status === 'active' && <div className="rtc-actions">
-                {role === 'patient' && !link.is_primary && <button type="button" className="rtc-outline" disabled={saving} onClick={() => {
-                  if (supabase) void execute(async (client) => client.rpc('rttrack_set_primary',{p_link_id:link.id}), 'Primary clinician updated.');
-                }}>Make primary</button>}
-                <button type="button" className="rtc-outline" disabled={saving} onClick={() => {
-                  if (supabase && window.confirm('End this connection? The relationship will be revoked.'))
-                    void execute(async (client) => client.rpc('rttrack_end_link',{p_link_id:link.id}), 'Connection revoked.');
-                }}>End connection</button></div>}
-              {link.status === 'pending' && !recipient && <button type="button" className="rtc-outline" disabled={saving} onClick={() => {
-                if (supabase && window.confirm('Withdraw this pending request?'))
-                  void execute(async (client) => client.rpc('rttrack_end_link',{p_link_id:link.id}), 'Request withdrawn.');
-              }}>Withdraw request</button>}
-            </div>;
-          })}
-        </section>
-      </div>
-      <p className="rtc-disclaimer"><ShieldCheck size={16}/> Treatment-record access requires separate patient authorisation. Emergency alerts are not connected.</p>
-    </>}
+                {openPairIds.has(item.clinician_id) ? 'Already requested' : 'Request'}</button></div>)}
+        </div>
+        <div className="rtc-consent-area"><p className="rtc-consent-explain">Requesting a connection also authorises this doctor to access your RTTRACK treatment plans, prescribed doses and session records once they accept. A doctor who authored a plan may record sessions. You can withdraw treatment access or end the connection later. Symptom sharing is separate.</p>
+          <label className="rtc-consent"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)}/> I agree to connect and share my treatment records with the doctor I select.</label></div>
+      </section> : <section className="rtc-card" aria-labelledby="rtc-request-title">
+        <h3 id="rtc-request-title"><UserPlus size={19} aria-hidden="true"/> Find & request</h3>
+        <label className="rtc-consent rtc-directory-toggle"><input type="checkbox" checked={discoverable} disabled={saving} onChange={e => {
+          if (!supabase) return;
+          void execute(async client => client.rpc('rttrack_set_discoverable', { p_discoverable: e.target.checked }), 'Directory preference saved.');
+        }}/> Show me in the patient directory</label>
+        <form onSubmit={e => void requestPatient(e)} className="rtc-form"><label className="rtc-label">Patient email
+          <input type="email" required value={patientEmail} onChange={e => setPatientEmail(e.target.value)} placeholder="patient@example.com" maxLength={254}/></label>
+          <button type="submit" className="rtc-primary" disabled={saving || !patientEmail.trim()}>Send request</button></form>
+        <details className="rtc-disclosure"><summary>How requests work</summary><p>Requests do not reveal whether an email belongs to a patient. The patient must accept and consent to treatment-record sharing before your access begins.</p></details>
+      </section>}
+      <section className="rtc-card rtc-connections-card" aria-labelledby="rtc-connections-title"><div className="rtc-list-heading"><h3 id="rtc-connections-title"><Link2 size={19} aria-hidden="true"/> My connections</h3><label className="rtc-status-filter">Show <select value={statusFilter} onChange={e => {setStatusFilter(e.target.value as typeof statusFilter);setSelectedLinkId(null);}}><option value="all">All</option><option value="pending">To respond to</option><option value="active">Active</option></select></label></div>
+        <div className="rtc-connection-list" role="region" aria-label="Connection list" tabIndex={0}>
+          {connections.length === 0 ? <p>No connection requests yet.</p> : connections.filter(link => statusFilter === 'all' || (statusFilter === 'active' ? link.status === 'active' : link.status === 'pending' && link.initiated_by !== userId)).length === 0 ? <p>No connections match this filter.</p> : connections.filter(link => statusFilter === 'all' || (statusFilter === 'active' ? link.status === 'active' : link.status === 'pending' && link.initiated_by !== userId)).map(link =>
+            <button key={link.id} type="button" className={`rtc-connection-row ${selectedLinkId === link.id ? 'rtc-selected' : ''}`}
+              aria-pressed={selectedLinkId === link.id} onClick={() => {setSelectedLinkId(old => old === link.id ? null : link.id);setConsentFor([]);setSharingConfirmed([]);}}>
+              <span><strong>{otherName(link)}</strong><small>{role === 'patient' ? link.institution : 'Patient'} · {new Date(link.created_at).toLocaleDateString()}</small></span>
+              <span className="rtc-row-meta"><span className={`rtc-pill rtc-${link.status}`}>{link.status}{link.is_primary ? ' · Primary' : ''}</span>
+                {link.status === 'active' && <small>Treatment: {sharing[link.id] ? 'Shared' : 'Not shared'}</small>}</span>
+            </button>)}
+        </div>
+        {selected ? <section className="rtc-selected-details" aria-label={`Connection details for ${otherName(selected)}`}>
+          <div className="rtc-detail-header"><h4>{otherName(selected)}</h4><button type="button" className="rtc-outline" onClick={() => setSelectedLinkId(null)}>Close</button></div>
+          <p className="rtc-detail-line">{selected.status === 'active' ? `Treatment access: ${sharing[selected.id] ? 'Shared' : 'Not shared'}` : `Status: ${selected.status}`}</p>
+          {selected.status === 'pending' && selected.initiated_by !== userId && <div className="rtc-actions">
+            {role === 'patient' && <div className="rtc-consent-area"><p className="rtc-consent-explain">Accepting connects you with {selected.clinician_name} and authorises access to your RTTRACK treatment plans, prescribed doses and session records. If this doctor authored a plan, they may record sessions. You can withdraw treatment access or end the connection later. Symptom sharing requires separate permission.</p>
+              <label className="rtc-consent"><input type="checkbox" checked={consentFor.includes(selected.id)} onChange={e => setConsentFor(old => e.target.checked ? [...old,selected.id] : old.filter(id => id !== selected.id))}/> I agree to connect and share my treatment records.</label></div>}
+            <button type="button" className="rtc-primary" disabled={saving || (role === 'patient' && !consentFor.includes(selected.id))} onClick={() => void respond(selected,true)}>{role === 'patient' ? 'Accept & share records' : 'Accept request'}</button>
+            <button type="button" className="rtc-outline" disabled={saving} onClick={() => void respond(selected,false)}>Decline</button></div>}
+          {selected.status === 'pending' && selected.initiated_by === userId && <div className="rtc-actions"><span className="rtc-help">Awaiting a response.</span>
+            <button type="button" className="rtc-outline" disabled={saving} onClick={() => {
+              if (supabase && window.confirm('Withdraw this pending request?'))
+                void execute(async client => client.rpc('rttrack_end_link',{p_link_id:selected.id}), 'Request withdrawn.');
+            }}>Withdraw request</button></div>}
+          {selected.status === 'active' && <div className="rtc-actions">
+            {role === 'patient' && <div className="rtc-consent-area"><strong>Treatment-record access: {sharing[selected.id] ? 'Allowed' : 'Not shared'}</strong>
+              {!sharing[selected.id] && <><p className="rtc-consent-explain">Allow this doctor to view your treatment plans, prescribed doses and session records and, if they authored a plan, record sessions. You can withdraw access later.</p>
+                <label className="rtc-consent"><input type="checkbox" checked={sharingConfirmed.includes(selected.id)} onChange={e => setSharingConfirmed(old => e.target.checked ? [...old,selected.id] : old.filter(id => id !== selected.id))}/> I authorise treatment-record access for {selected.clinician_name}.</label></>}
+              <button type="button" className={sharing[selected.id] ? 'rtc-outline' : 'rtc-primary'} disabled={saving || (!sharing[selected.id] && !sharingConfirmed.includes(selected.id))}
+                onClick={() => void changeSharing(selected,!sharing[selected.id])}>{sharing[selected.id] ? 'Withdraw treatment access' : 'Allow treatment access'}</button></div>}
+            {role === 'patient' && !selected.is_primary && <button type="button" className="rtc-outline" disabled={saving} onClick={() => {
+              if (supabase) void execute(async client => client.rpc('rttrack_set_primary',{p_link_id:selected.id}), 'Primary doctor updated.');
+            }}>Make primary</button>}
+            <button type="button" className="rtc-outline" disabled={saving} onClick={() => {
+              if (supabase && window.confirm('End this connection? The relationship will be revoked.'))
+                void execute(async client => client.rpc('rttrack_end_link',{p_link_id:selected.id}), 'Connection revoked.');
+            }}>End connection</button></div>}
+        </section> : <p className="rtc-select-hint">Select a connection to manage it.</p>}
+      </section>
+    </div>}
   </section>;
 }

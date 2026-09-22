@@ -142,15 +142,15 @@ export default function ClinicianPatients({ userId, onNavigate }: Props) {
     ? data.plans.filter(plan => plan.patient_id === selected.patient_id) : [];
   const countLimit = [data.connections.length, data.treatmentIds.length, data.symptomIds.length, data.plans.length].some(count => count >= 100);
 
-  return <section className="rtcp-root" aria-label="Clinician patients">
+  return <section className="rtcp-root" aria-label="Doctor patients">
     <header className="rtcp-heading">
-      <div><span className="rtcp-eyebrow">CLINICIAN PORTAL · PATIENTS</span><h1>My patients</h1>
+      <div><span className="rtcp-eyebrow">DOCTOR PORTAL · PATIENTS</span><h1>My patients</h1>
         <p>Find patients who have an active, consented connection with you. Treatment and symptom access require separate patient permissions.</p></div>
       <button type="button" className="rtcp-outline" disabled={loading} onClick={() => setRefresh(value => value + 1)}>
         <RefreshCw size={17} aria-hidden="true" /> {loading ? 'Loading…' : 'Refresh patients'}
       </button>
     </header>
-    
+
     {data.errors.connections && <div className="rtcp-error" role="alert">Patient connections could not be loaded: {data.errors.connections}. <button type="button" className="rtcp-link" onClick={() => setRefresh(value => value + 1)}>Retry</button></div>}
     {(data.errors.treatment || data.errors.symptoms || data.errors.plans) && !data.errors.connections && <div className="rtcp-notice" role="status">
       Some permissions or records could not be checked. The affected sections below show “Unavailable,” not “Not shared.” Refresh to retry.
@@ -176,7 +176,7 @@ export default function ClinicianPatients({ userId, onNavigate }: Props) {
           <p className="rtcp-empty">No connected patients match these filters. Try another name or choose All connected.</p> :
           <div className="rtcp-list" role="list">{visible.map(patient => <div className={`rtcp-person ${selectedId === patient.patient_id ? 'rtcp-person-selected' : ''}`} role="listitem" key={patient.patient_id}>
             <div className="rtcp-person-main"><span className="rtcp-avatar" aria-hidden="true"><Users size={18}/></span>
-              <div><strong>{patient.patient_name}</strong><small>Connected {formatDate(patient.created_at)}{patient.is_primary ? ' · Primary clinician' : ''}</small></div></div>
+              <div><strong>{patient.patient_name}</strong><small>Connected {formatDate(patient.created_at)}{patient.is_primary ? ' · Primary doctor' : ''}</small></div></div>
             <div className="rtcp-person-actions"><span className="rtcp-dot rtcp-active">Connected</span>
               <button type="button" className="rtcp-outline" aria-pressed={selectedId === patient.patient_id} onClick={() => setSelectedId(selectedId === patient.patient_id ? null : patient.patient_id)}>
                 {selectedId === patient.patient_id ? 'Close details' : 'View patient'} <ArrowRight size={15} aria-hidden="true"/></button></div>
@@ -187,7 +187,7 @@ export default function ClinicianPatients({ userId, onNavigate }: Props) {
         {!selected ? <div className="rtcp-details-empty"><BookOpenCheck size={32} aria-hidden="true"/><h2 id="rtcp-details-title">Select a patient</h2><p>Choose View patient from the list to see their connection details and only the records they have authorised you to access.</p></div> : <>
           <div className="rtcp-panel-head rtcp-details-head"><div><span className="rtcp-eyebrow">PATIENT OVERVIEW</span><h2 id="rtcp-details-title">{selected.patient_name}</h2></div>
             <button type="button" className="rtcp-outline" onClick={() => setSelectedId(null)}><ArrowLeft size={16} aria-hidden="true"/> Close details</button></div>
-          <dl className="rtcp-facts"><div><dt>Care connection</dt><dd>Active · Patient consent recorded</dd></div><div><dt>Connection created</dt><dd>{formatDate(selected.created_at)}</dd></div><div><dt>Primary clinician</dt><dd>{selected.is_primary ? 'You are marked as primary' : 'You are not marked as primary'}</dd></div></dl>
+          <dl className="rtcp-facts"><div><dt>Care connection</dt><dd>Active · Patient consent recorded</dd></div><div><dt>Connection created</dt><dd>{formatDate(selected.created_at)}</dd></div><div><dt>Primary doctor</dt><dd>{selected.is_primary ? 'You are marked as primary' : 'You are not marked as primary'}</dd></div></dl>
           <h3>Record access</h3>
           <div className="rtcp-access">
             <article><div><CalendarDays size={19} aria-hidden="true"/><strong>Treatment</strong></div>

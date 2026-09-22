@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, CalendarDays, ClipboardList, Link2, Users } from 'lucide-react';
+import { ArrowRight, CalendarDays, ClipboardList, Link2, RefreshCw, Users } from 'lucide-react';
 import { supabase } from './supabase';
 import './clinician-dashboard.css';
 
 type Destination = 'Connections' | 'Treatment' | 'Symptoms' | 'Education';
+type NavigationContext = { planId?: string; patientId?: string; status?: 'draft' | 'active'; fractionNumber?: number; connectionFilter?: 'pending' | 'active' };
 type Link = {
   id: string;
   patient_id: string;
@@ -98,7 +99,7 @@ function CompletedFractionsChart({ sessions }: { sessions: Session[] }) {
 type Props = {
   userId: string;
   clinicianName: string;
-  onNavigate: (destination: Destination) => void;
+  onNavigate: (destination: Destination, context?: NavigationContext) => void;
 };
 
 function formatAppointment(value: string) {
@@ -214,24 +215,23 @@ export default function ClinicianDashboard({ userId, clinicianName, onNavigate }
     .sort((a, b) => new Date(a.next_session_at!).getTime() - new Date(b.next_session_at!).getTime()), [activePlans]);
 
   const metrics = [
-    { label: 'Connected patients', value: linksError ? '—' : String(connected), detail: 'Active, consented care connections', Icon: Users, destination: 'Connections' as const, disabled: !!linksError },
-    { label: 'Requests to respond to', value: linksError ? '—' : String(incoming), detail: 'Incoming connection requests', Icon: Link2, destination: 'Connections' as const, disabled: !!linksError },
-    { label: 'Active plans', value: plansError ? '—' : String(activePlans.length), detail: 'Treatment plans shared with you', Icon: ClipboardList, destination: 'Treatment' as const, disabled: !!plansError },
-    { label: 'My draft plans', value: plansError ? '—' : String(ownDrafts.length), detail: 'Not yet published to patients', Icon: CalendarDays, destination: 'Treatment' as const, disabled: !!plansError },
+    { label: 'Connected patients', value: linksError ? '—' : String(connected), detail: 'Active, consented care connections', Icon: Users, destination: 'Connections' as const, context: {connectionFilter:'active'} as NavigationContext, disabled: !!linksError },
+    { label: 'Requests to respond to', value: linksError ? '—' : String(incoming), detail: 'Incoming connection requests', Icon: Link2, destination: 'Connections' as const, context: {connectionFilter:'pending'} as NavigationContext, disabled: !!linksError },
+    { label: 'Active plans', value: plansError ? '—' : String(activePlans.length), detail: 'Treatment plans shared with you', Icon: ClipboardList, destination: 'Treatment' as const, context: {status:'active'} as NavigationContext, disabled: !!plansError },
+    { label: 'My draft plans', value: plansError ? '—' : String(ownDrafts.length), detail: 'Not yet published to patients', Icon: CalendarDays, destination: 'Treatment' as const, context: {status:'draft'} as NavigationContext, disabled: !!plansError },
   ];
 
 
   return <div className="rtcd-root">
     <div className="rtcd-header">
-      <div><span className="rtcd-eyebrow">CLINICIAN PORTAL · DASHBOARD</span>
+      <div><span className="rtcd-eyebrow">DOCTOR PORTAL · DASHBOARD</span>
         <h1>Welcome back, {clinicianName}</h1>
-        
+        <p>Your patients, treatment plans and upcoming appointments.</p>
       </div>
       <button type="button" className="rtcd-outline" onClick={() => setRefreshKey(key => key + 1)} disabled={loading}>
-        <span aria-hidden="true">↻</span>
+        <RefreshCw size={17} aria-hidden="true" /> {loading ? 'Loading…' : 'Refresh dashboard'}
       </button>
     </div>
-    
     {(linksError || plansError) && <div className="rtcd-error" role="alert">
       <strong>Some information could not be loaded.</strong>
       {linksError && <p>Connections: {linksError}</p>}
@@ -240,43 +240,42 @@ export default function ClinicianDashboard({ userId, clinicianName, onNavigate }
     </div>}
 
     <section className="rtcd-metrics" aria-label="Your workspace summary">
-      {metrics.map(({ label, value, detail, Icon, destination, disabled }) => <article className="rtcd-metric" key={label}>
+      {metrics.map(({ label, value, detail, Icon, destination, context, disabled }) => <article className="rtcd-metric" key={label}>
         <div className="rtcd-metric-top"><span>{label}</span><Icon size={19} aria-hidden="true" /></div>
         <strong className="rtcd-metric-number" aria-label={`${label}: ${loading ? 'Loading' : value}`}>{loading ? '…' : value}</strong>
         <p>{detail}</p>
-        <button type="button" className="rtcd-text-button" disabled={disabled || loading} onClick={() => onNavigate(destination)}>
+        <button type="button" className="rtcd-text-button" disabled={disabled || loading} onClick={() => onNavigate(destination, context)}>
           View {destination.toLowerCase()} <ArrowRight size={15} aria-hidden="true" />
         </button>
       </article>)}
     </section>
 
     <div className="rtcd-main-grid">
-      <section className="rtcd-card" aria-labelledby="rtcd-upcoming-title">
+      <section className="rtcd-card rtcd-fixed-card" aria-labelledby="rtcd-upcoming-title">
         <div className="rtcd-section-head"><div><span className="rtcd-eyebrow">NEXT RECORDED SESSIONS</span>
           <h2 id="rtcd-upcoming-title">Upcoming appointments</h2></div>
-          <button type="button" className="rtcd-text-button" onClick={() => onNavigate('Treatment')}>Treatment <ArrowRight size={15} aria-hidden="true" /></button>
+          <button type="button" className="rtcd-text-button" onClick={() => onNavigate('Treatment', {status:'active'})}>Treatment <ArrowRight size={15} aria-hidden="true" /></button>
         </div>
-        <p className="rtcd-hint">Shows the earliest upcoming scheduled fraction for each accessible active plan—not the complete appointment calendar.</p>
         {loading ? <p role="status" className="rtcd-empty">Loading appointments…</p> : plansError ?
           <p className="rtcd-empty">Appointments unavailable while treatment records cannot be loaded.</p> : upcoming.length === 0 ?
-          <p className="rtcd-empty">No upcoming sessions are returned for your accessible active plans. Open Treatment to check the full records.</p> :
-          <div className="rtcd-appointment-list">{upcoming.slice(0, 5).map(plan => <article className="rtcd-appointment" key={plan.plan_id}>
+          <p className="rtcd-empty">No upcoming appointments listed.</p> :
+          <div className="rtcd-appointment-list rtcd-scroll-list" role="region" aria-label="Upcoming appointments, scroll to view more" tabIndex={0}>{upcoming.map(plan => <article className="rtcd-appointment" key={plan.plan_id}>
             <span className="rtcd-date"><CalendarDays size={18} aria-hidden="true" />
               <time dateTime={plan.next_session_at!}>{formatAppointment(plan.next_session_at!)}</time></span>
             <strong>{plan.patient_name}</strong><span className="rtcd-wrap">{plan.title} · Fraction {plan.next_fraction_number ?? 'not specified'}</span>
             {plan.next_session_location && <small>Location: {plan.next_session_location}</small>}
+            <button type="button" className="rtcd-text-button" onClick={() => onNavigate('Treatment', {planId:plan.plan_id,patientId:plan.patient_id,fractionNumber:plan.next_fraction_number ?? undefined})}>Open appointment <ArrowRight size={14}/></button>
           </article>)}</div>}
-        {!loading && !plansError && upcoming.length > 5 && <p className="rtcd-hint">Showing the first five upcoming plan sessions. Open Treatment for more.</p>}
       </section>
 
-      <section className="rtcd-card" aria-labelledby="rtcd-plans-title">
+      <section className="rtcd-card rtcd-fixed-card" aria-labelledby="rtcd-plans-title">
         <div className="rtcd-section-head"><div><span className="rtcd-eyebrow">TREATMENT OVERVIEW</span><h2 id="rtcd-plans-title">Active treatment plans</h2></div>
           <button type="button" className="rtcd-text-button" onClick={() => onNavigate('Treatment')}>All plans <ArrowRight size={15} aria-hidden="true" /></button>
         </div>
         {loading ? <p role="status" className="rtcd-empty">Loading treatment plans…</p> : plansError ?
           <p className="rtcd-empty">Treatment plans could not be loaded.</p> : activePlans.length === 0 ?
           <p className="rtcd-empty">No active treatment plans are currently shared with you.</p> :
-          <div className="rtcd-plan-list">{activePlans.slice(0, 4).map(plan => {
+          <div className="rtcd-plan-list rtcd-scroll-list" role="region" aria-label="Active treatment plans, scroll to view more" tabIndex={0}>{activePlans.map(plan => {
             const done = Number(plan.completed_fractions) || 0;
             const total = Number(plan.total_fractions) || 0;
             const percent = total > 0 ? Math.max(0, Math.min(100, done / total * 100)) : 0;
@@ -287,9 +286,9 @@ export default function ClinicianDashboard({ userId, clinicianName, onNavigate }
               <div className="rtcd-progress" role="progressbar" aria-label={`${plan.patient_name}: fractions recorded completed`}
                 aria-valuemin={0} aria-valuemax={Math.max(total, 1)} aria-valuenow={Math.min(done, Math.max(total, 1))}>
                 <span style={{ width: `${percent}%` }} /></div>
+              <button type="button" className="rtcd-text-button" onClick={() => onNavigate('Treatment', {planId:plan.plan_id,patientId:plan.patient_id})}>Open plan <ArrowRight size={14}/></button>
             </article>;
           })}</div>}
-        {!loading && !plansError && activePlans.length > 4 && <p className="rtcd-hint">Showing four plans. Open Treatment to view the others.</p>}
       </section>
     </div>
 
