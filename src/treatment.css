@@ -6,3 +6,6 @@
 
 /* Separate patient-controlled treatment-record consent inside the existing Connections page. */
 .rtc-sharing-box{border:1px solid #cbd0e5;border-radius:10px;padding:14px;margin-top:13px;background:#f6f9fe;display:grid;gap:9px}.rtc-sharing-box>strong{font-size:13px;color:#0b125c}.rtc-sharing-box .rtc-consent{margin:4px 0}.rtc-sharing-box .rtc-primary,.rtc-sharing-box .rtc-outline{justify-self:start;white-space:normal;text-align:left}
+
+/* Phase 3: searchable patient selection + PDF action */
+.rtt-search-input{position:relative}.rtt-search-input svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#5d6b82;pointer-events:none}.rtt-search-input input{padding-left:36px!important}.rtt-fraction-heading{align-items:flex-start;gap:12px;flex-wrap:wrap}.rtt-fraction-heading>div{min-width:0}.rtt-fraction-heading>button{margin-left:auto}

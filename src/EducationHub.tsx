@@ -102,11 +102,16 @@ export default function EducationHub() {
     {loading ? <p role="status">Loading education resources…</p> : !error && matching.length === 0 ? <div className="rte-empty"><BookOpen size={27}/><h2>No approved resources found</h2><p>{resources.length === 0 ? 'No learning materials have passed RTTRACK’s review process yet. This is not a loading error.' : 'Try a different search, topic or language.'}</p></div> : null}
     {!loading && !error && matching.length > 0 && <>
       <p className="rte-count" role="status">{matching.length} reviewed {matching.length === 1 ? 'resource' : 'resources'}</p>
-      <div className="rte-grid">{matching.map(resource => <article className="rte-card rte-library-item" key={resource.resource_id}>
-        <div className="rte-card-top"><span className="rte-category"><BookOpen size={15}/> {resource.category}</span><span className="rte-language"><Languages size={15}/> {langName(resource.language_code)}</span></div>
-        <h2><button type="button" className="rte-title-link" onClick={event => openResource(resource.resource_id,event)}>{resource.title}<ArrowRight size={17} aria-hidden="true"/></button></h2>
-        <small>Source: {resource.source_name}</small>
-      </article>)}</div>
+      <div className="rte-table-wrap" role="region" aria-label="Education resources" tabIndex={0}><table className="rte-resource-table">
+        <thead><tr><th scope="col">Topic</th><th scope="col">Category</th><th scope="col">Language</th><th scope="col">Source</th><th scope="col">Action</th></tr></thead>
+        <tbody>{matching.map(resource => <tr key={resource.resource_id}>
+          <td data-label="Topic"><button type="button" className="rte-table-title" onClick={event => openResource(resource.resource_id,event)}>{resource.title}</button></td>
+          <td data-label="Category">{resource.category}</td>
+          <td data-label="Language">{langName(resource.language_code)}</td>
+          <td data-label="Source">{resource.source_name}</td>
+          <td data-label="Action"><button type="button" className="rte-secondary rte-read-button" onClick={event => openResource(resource.resource_id,event)}>Read <ArrowRight size={15}/></button></td>
+        </tr>)}</tbody>
+      </table></div>
     </>}
     <p className="rte-footnote">Prototype · Fictional accounts only. External source websites are independent of RTTRACK. No automatic diagnosis, dose adjustment or emergency monitoring is provided.</p>
   </section>;

@@ -144,7 +144,7 @@ export function PatientSymptoms({ userId }: { userId: string }) {
       const result = await client.rpc('rttrack_set_symptom_sharing', { p_link_id: link.id, p_allow: allow });
       if (result.error) throw result.error;
       setChecked(prev => prev.filter(id => id !== link.id));
-      await refresh(); setNotice(allow ? 'Symptom sharing enabled for this clinician. No email or alert was sent.' : 'Symptom sharing withdrawn for this clinician.');
+      await refresh(); setNotice(allow ? 'Symptom sharing enabled for this doctor. No email or alert was sent.' : 'Symptom sharing withdrawn for this doctor.');
     } catch (caught) { setError(caught instanceof Error ? caught.message : 'Could not update symptom sharing.'); }
     finally { setSaving(false); }
   }
@@ -200,13 +200,13 @@ export function PatientSymptoms({ userId }: { userId: string }) {
         </section>
         {!loading && <WeeklyChart entries={entries}/>}
         <section className="rts-card rts-sharing" aria-labelledby="rts-sharing-title"><h2 id="rts-sharing-title"><ShieldCheck size={20}/> Symptom sharing permissions</h2>
-          <p className="rts-muted">Your log is private by default. A care connection or treatment-record permission does not grant symptom access. You choose separately for each connected clinician.</p>
+          <p className="rts-muted">Your log is private by default. A care connection or treatment-record permission does not grant symptom access. You choose separately for each connected doctor.</p>
           {loading ? <p role="status">Loading permissions…</p> : links.length === 0 ? <p className="rts-muted">No active care connections yet. You can still save private symptom entries.</p> :
             links.map(link => <div className="rts-share-row" key={link.id}><div><strong>{link.clinician_name}</strong>
               <span>{sharing[link.id] ? 'Symptom sharing enabled' : 'Symptom sharing off'}</span></div>
               {sharing[link.id] ? <button type="button" className="rts-outline" disabled={saving} onClick={() => void changeSharing(link, false)}>Withdraw access</button> :
                 <div className="rts-share-controls"><label><input type="checkbox" checked={checked.includes(link.id)} disabled={saving} onChange={e => setChecked(prev => e.target.checked ? [...prev, link.id] : prev.filter(id => id !== link.id))}/>
-                  I explicitly authorise this clinician to view my symptom entries.</label>
+                  I explicitly authorise this doctor to view my symptom entries.</label>
                   <button type="button" className="rts-primary" disabled={saving || !checked.includes(link.id)} onClick={() => void changeSharing(link, true)}>Allow symptom access</button></div>}
             </div>)}
         </section>
@@ -219,6 +219,11 @@ export function PatientSymptoms({ userId }: { userId: string }) {
 export function ClinicianSymptomReview({ userId }: { userId: string }) {
   const [patients, setPatients] = useState<VisiblePatient[]>([]);
   const [selectedPatient, setSelectedPatient] = useState('');
+  const [patientQuery, setPatientQuery] = useState('');
+  const filteredPatients = useMemo(() => {
+    const query = patientQuery.trim().toLocaleLowerCase();
+    return query ? patients.filter(patient => patient.full_name.toLocaleLowerCase().includes(query)) : patients;
+  }, [patients, patientQuery]);
   const [entries, setEntries] = useState<SymptomEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -259,18 +264,23 @@ export function ClinicianSymptomReview({ userId }: { userId: string }) {
   }
 
   return <div className="rts-module rts-clinician">
-    <div className="rts-header"><div><span className="rts-eyebrow">CLINICIAN PORTAL · SYMPTOMS</span><h2>Symptom review</h2>
+    <div className="rts-header"><div><span className="rts-eyebrow">DOCTOR PORTAL · SYMPTOMS</span><h2>Symptom review</h2>
       <p>View entries shared by connected patients and record acknowledgements.</p></div>
       <button type="button" className="rts-outline" disabled={saving} onClick={() => void refresh()}><RefreshCw size={17}/> Refresh</button></div>
     <EmergencyNotice/>
     {error && <p className="rts-alert rts-error" role="alert">{error}</p>}{notice && <p className="rts-alert rts-success" role="status">{notice}</p>}
     <section className="rts-card rts-selector"><h2><Stethoscope size={20}/> Authorised patients</h2>
       <p className="rts-muted">Only patients with an active care connection AND separate symptom-sharing permission appear. Administrator status alone grants no symptom access.</p>
-      {loading ? <p role="status">Loading…</p> : patients.length === 0 ? <p className="rts-muted">No patients have authorised symptom sharing yet.</p> :
-        <label>Choose patient<select value={selectedPatient} onChange={e => { setSelectedPatient(e.target.value); setEntries([]); setNotice(''); }}>
-          {patients.map(patient => <option key={patient.patient_id} value={patient.patient_id}>{patient.full_name}</option>)}</select></label>}
+      {loading ? <p role="status">Loading…</p> : patients.length === 0 ? <p className="rts-muted">No patients have authorised symptom sharing yet.</p> : <>
+        <label>Search authorised patients<input type="search" value={patientQuery} onChange={e=>setPatientQuery(e.target.value)} placeholder="Search patient by name…" autoComplete="off"/></label>
+        <div className="rts-patient-results" role="list" aria-label="Authorised patient search results">
+          {filteredPatients.length === 0 ? <p className="rts-muted">No authorised patients match that search.</p> :
+            filteredPatients.map(patient => <button type="button" role="listitem" key={patient.patient_id} className={`rts-patient-result ${selectedPatient === patient.patient_id ? 'selected' : ''}`} onClick={() => { setSelectedPatient(patient.patient_id); setEntries([]); setNotice(''); }}>
+              <strong>{patient.full_name}</strong><span>{selectedPatient === patient.patient_id ? 'Viewing symptoms' : 'View symptoms'}</span>
+            </button>)}
+        </div></>}
     </section>
     {selectedPatient && !loading && <History entries={entries} clinician onAcknowledge={id => void acknowledge(id)} working={saving}/>}
-    <p className="rts-footnote"><CheckCircle2 size={16} aria-hidden="true"/> This prototype does not generate clinician alerts, determine risk levels, or replace the clinical follow-up process.</p>
+    <p className="rts-footnote"><CheckCircle2 size={16} aria-hidden="true"/> This prototype does not generate doctor alerts, determine risk levels, or replace the clinical follow-up process.</p>
   </div>;
 }

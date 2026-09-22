@@ -13,10 +13,12 @@ import { ClinicianSymptomReview } from './SymptomModule';
 import EducationHub, { EducationManager } from './EducationHub';
 import ClinicianDashboard from './ClinicianDashboard';
 import ClinicianPatients from './ClinicianPatients';
+import DoctorInsights from './DoctorInsights';
+import EmergencyProtocol from './EmergencyProtocol';
 import './doctor-portal.css';
 
 type Application = { full_name: string; email: string; institution: string; registration_number: string; status: 'pending' | 'approved' | 'rejected' | 'deactivated' | 'reapproval_requested' };
-type Mode = 'register' | 'login' | 'patient-register';
+type Mode = 'register' | 'login' | 'patient-register' | 'forgot-password' | 'reset-password';
 type PatientProfile = { full_name: string };
 type AdminSection = 'doctors' | 'education' | 'reviews' | 'activity' | 'reports';
 type NavigationContext = { planId?: string; patientId?: string; status?: 'draft' | 'active'; fractionNumber?: number; connectionFilter?: 'pending' | 'active' };
@@ -57,6 +59,8 @@ export default function App() {
   const [founderPassword, setFounderPassword] = useState('');
   const [founderPasswordConfirm, setFounderPasswordConfirm] = useState('');
   const [founderSaving, setFounderSaving] = useState(false);
+  const [accountResolved, setAccountResolved] = useState(false);
+  const [resetPasswordConfirm, setResetPasswordConfirm] = useState('');
 
   async function loadAdminRole(id: string) {
     if (!supabase) return;
@@ -87,6 +91,13 @@ export default function App() {
     setPatientProfile(data as PatientProfile | null);
   }
 
+  async function hydrateAccount(current: User) {
+    setAccountResolved(false);
+    setApplication(null); setPatientProfile(null); setPatientLookupFailed(false); setApplicationLookupFailed(false); setIsAdministrator(false);
+    await Promise.all([loadApplication(current.id), loadAdminRole(current.id), loadPatient(current.id)]);
+    setAccountResolved(true);
+  }
+
   useEffect(() => {
     if (!supabase) { setBusy(false); return; }
     const client = supabase;
@@ -94,13 +105,28 @@ export default function App() {
     client.auth.getUser().then(async ({ data: { user: current } }) => {
       if (!mounted) return;
       setUser(current);
-      if (current) await Promise.all([loadApplication(current.id), loadAdminRole(current.id), loadPatient(current.id)]);
+      if (current) await hydrateAccount(current);
+      else setAccountResolved(true);
       if (mounted) setBusy(false);
     }).catch(() => { if (mounted) { setError('Could not connect to Supabase.'); setBusy(false); } });
-    const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = client.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
-      setUser(session?.user ?? null);
-      if (!session) { setApplication(null); setPatientProfile(null); setPatientLookupFailed(false); setIsAdministrator(false); setAdminView(false); setAdminExpanded(false); setTreatmentFocus(undefined); setConnectionFocus(undefined); }
+      const nextUser = session?.user ?? null;
+      setUser(nextUser);
+      if (event === 'PASSWORD_RECOVERY' && nextUser) {
+        setMode('reset-password');
+        setAccountResolved(true);
+        setBusy(false);
+        return;
+      }
+      if (!session) {
+        setApplication(null); setPatientProfile(null); setPatientLookupFailed(false); setIsAdministrator(false);
+        setAdminView(false); setAdminExpanded(false); setTreatmentFocus(undefined); setConnectionFocus(undefined);
+        setAccountResolved(true);
+      } else if (nextUser) {
+        setAccountResolved(false);
+        void hydrateAccount(nextUser);
+      }
     });
     return () => { mounted = false; subscription.unsubscribe(); };
   }, []);
@@ -131,17 +157,49 @@ export default function App() {
         if (authError) throw authError;
         setMessage(mode === 'patient-register'
           ? 'If registration succeeded, check your inbox and confirm your email. You can then sign in to your private patient dashboard.'
-          : 'If registration succeeded, check your inbox and confirm your email. Your clinician application will remain pending until an administrator verifies your credentials.');
+          : 'If registration succeeded, check your inbox and confirm your email. Your doctor application will remain pending until an administrator verifies your credentials.');
         setMode('login'); setPassword('');
       } else {
         const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
         if (authError) throw authError;
         setUser(data.user);
-        await Promise.all([loadApplication(data.user.id), loadAdminRole(data.user.id), loadPatient(data.user.id)]);
+        await hydrateAccount(data.user);
         setPassword('');
       }
     } catch (caught) { setError(caught instanceof Error ? caught.message : 'Please try again.'); }
     finally { setSending(false); }
+  }
+  async function sendPasswordReset(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!supabase || sending || !email.trim()) return;
+    setSending(true); setError(''); setMessage('');
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: window.location.origin,
+      });
+      if (resetError) throw resetError;
+      setMessage('If an RTTRACK account exists for that email, a password-reset link has been sent.');
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not send the password-reset link.');
+    } finally { setSending(false); }
+  }
+
+  async function saveRecoveredPassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!supabase || sending) return;
+    setError(''); setMessage('');
+    if (password.length < 8) { setError('Use a password of at least 8 characters.'); return; }
+    if (password !== resetPasswordConfirm) { setError('The passwords do not match.'); return; }
+    setSending(true);
+    try {
+      const { error: updateError } = await supabase.auth.updateUser({ password });
+      if (updateError) throw updateError;
+      await signOut();
+      setMode('login');
+      setMessage('Password updated. Sign in with your new password.');
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not update the password.');
+    } finally { setSending(false); }
   }
   async function completeFounderInvitation(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -185,23 +243,30 @@ export default function App() {
     finally { setReapprovalBusy(false); }
   }
 
-  async function signOut() { await supabase?.auth.signOut(); setUser(null); setApplication(null); setPatientProfile(null); setPatientLookupFailed(false); setIsAdministrator(false); setAdminView(false); setAdminExpanded(false); setTreatmentFocus(undefined); setConnectionFocus(undefined); setMessage(''); setError(''); setMode('login'); setFounderPassword(''); setFounderPasswordConfirm(''); }
+  async function signOut() { await supabase?.auth.signOut(); setUser(null); setApplication(null); setPatientProfile(null); setPatientLookupFailed(false); setIsAdministrator(false); setAdminView(false); setAdminExpanded(false); setTreatmentFocus(undefined); setConnectionFocus(undefined); setMessage(''); setError(''); setMode('login'); setFounderPassword(''); setFounderPasswordConfirm(''); setResetPasswordConfirm(''); setAccountResolved(false); }
 
   if (!configured) return <div className="setup"><h1>RTTRACK · Setup required</h1><p>Copy <code>.env.example</code> to <code>.env</code>, paste your Supabase project URL and publishable key, then restart the development server.</p><p>Never paste a secret or service-role key into the frontend.</p></div>;
   if (busy) return <div className="setup" role="status">Loading RTTRACK…</div>;
+  if (user && mode !== 'reset-password' && !accountResolved) return <div className="setup" role="status">Opening your RTTRACK account…</div>;
+  if (mode === 'reset-password') return <main className="auth-page"><section className="auth-panel"><div className="brand">RTTRACK</div><span className="eyebrow">PASSWORD RECOVERY</span><h1>Set a new password</h1><p className="muted">Choose a new password for your RTTRACK account.</p>{error && <p className="alert error" role="alert">{error}</p>}{message && <p className="alert success" role="status">{message}</p>}<form className="auth-form" onSubmit={saveRecoveredPassword}><label>New password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} required minLength={8} autoComplete="new-password" /></label><label>Confirm password<input type="password" value={resetPasswordConfirm} onChange={e=>setResetPasswordConfirm(e.target.value)} required minLength={8} autoComplete="new-password" /></label><button className="primary" disabled={sending}>{sending ? 'Updating…' : 'Update password'}</button></form></section></main>;
 
-  if (!user) return <main className="auth-page"><section className="auth-panel"><div className="brand">RTTRACK</div><span className="eyebrow">{mode === 'patient-register' ? 'PATIENT PORTAL' : 'SECURE ACCESS'}</span><h1>{mode === 'login' ? 'Welcome back' : mode === 'patient-register' ? 'Create your patient account' : 'Create your doctor account'}</h1><p className="muted">{mode === 'patient-register' ? 'Create your private account. A clinician connection and treatment plan will be added in a future milestone.' : mode === 'register' ? 'Your clinical access begins only after credential verification and administrator approval.' : 'Sign in to your RTTRACK account.'}</p>
+  if (!user) return <main className="auth-page"><section className="auth-panel"><div className="brand">RTTRACK</div><span className="eyebrow">{mode === 'patient-register' ? 'PATIENT PORTAL' : mode === 'forgot-password' ? 'PASSWORD RECOVERY' : 'SECURE ACCESS'}</span><h1>{mode === 'login' ? 'Welcome back' : mode === 'patient-register' ? 'Create your patient account' : mode === 'register' ? 'Create your doctor account' : 'Reset your password'}</h1><p className="muted">{mode === 'patient-register' ? 'Create your private RTTRACK patient account.' : mode === 'register' ? 'Your clinical access begins only after credential verification and administrator approval.' : mode === 'forgot-password' ? 'Enter your account email and RTTRACK will send a recovery link.' : 'Sign in to your RTTRACK account.'}</p>
     {error && <p className="alert error" role="alert">{error}</p>}{message && <p className="alert success" role="status">{message}</p>}
-    <form onSubmit={submit} className="auth-form">
+    {mode === 'forgot-password' ? <form onSubmit={sendPasswordReset} className="auth-form">
+      <label>Email address<input type="email" value={email} onChange={e=>setEmail(e.target.value)} required autoComplete="email" /></label>
+      <button className="primary" disabled={sending}>{sending ? 'Sending…' : 'Send reset link'}</button>
+    </form> : <form onSubmit={submit} className="auth-form">
       {mode !== 'login' && <label>Full name<input value={fullName} onChange={e => setFullName(e.target.value)} required minLength={2} maxLength={120} autoComplete="name" /></label>}
       {mode === 'register' && <><label>Professional registration number<input value={registration} onChange={e => setRegistration(e.target.value)} required maxLength={80} /></label><label>Hospital / institution<input value={institution} onChange={e => setInstitution(e.target.value)} required maxLength={160} /></label></>}
-      <label>Email address<input type="email" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="email" /></label><label>Password<input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={8} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} /></label>
+      <label>Email address<input type="email" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="email" /></label>
+      <label>Password<input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={8} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} /></label>
       <button className="primary" disabled={sending}>{sending ? 'Please wait…' : mode === 'login' ? 'Sign in' : mode === 'patient-register' ? 'Create patient account' : 'Submit doctor application'}</button>
-    </form>
+    </form>}
     <div aria-label="Account options" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 18px' }}>
-      {mode !== 'login' && <button className="text-button" onClick={() => { setMode('login'); setError(''); setMessage(''); }}>Already registered? Sign in</button>}
-      {mode !== 'patient-register' && <button className="text-button" onClick={() => { setMode('patient-register'); setError(''); setMessage(''); }}>Register as patient</button>}
-      {mode !== 'register' && <button className="text-button" onClick={() => { setMode('register'); setError(''); setMessage(''); }}>Register as doctor</button>}
+      {mode === 'login' && <button className="text-button" onClick={() => { setMode('forgot-password'); setError(''); setMessage(''); setPassword(''); }}>Forgot password?</button>}
+      {mode !== 'login' && <button className="text-button" onClick={() => { setMode('login'); setError(''); setMessage(''); setPassword(''); }}>Back to sign in</button>}
+      {mode !== 'patient-register' && mode !== 'forgot-password' && <button className="text-button" onClick={() => { setMode('patient-register'); setError(''); setMessage(''); }}>Register as patient</button>}
+      {mode !== 'register' && mode !== 'forgot-password' && <button className="text-button" onClick={() => { setMode('register'); setError(''); setMessage(''); }}>Register as doctor</button>}
     </div>
     <p className="fine-print">v1 Prototype</p>
   </section></main>;
@@ -223,10 +288,10 @@ export default function App() {
       <button type="button" className={`nav-link ${adminView && adminSection === 'reviews' ? 'selected' : ''}`} onClick={() => {setAdminView(true);setAdminSection('reviews');setMobile(false);}}>Doctor review history</button>
       <button type="button" className={`nav-link ${adminView && adminSection === 'activity' ? 'selected' : ''}`} onClick={() => {setAdminView(true);setAdminSection('activity');setMobile(false);}}>Activity log</button>
       <button type="button" className={`nav-link ${adminView && adminSection === 'reports' ? 'selected' : ''}`} onClick={() => {setAdminView(true);setAdminSection('reports');setMobile(false);}}>Reports</button>
-    </div>}</>}{navigation.map(({ label, Icon }) => <button key={label} disabled={!approved} className={`nav-link ${active === label ? 'selected' : ''}`} onClick={() => { setAdminView(false); setActive(label); setTreatmentFocus(undefined); setConnectionFocus(undefined); setMobile(false); }}><Icon size={19}/>{label}</button>)}</nav><div className="sidebar-bottom"><button className="emergency" onClick={() => setMessage('Emergency services are not connected. Follow your clinical emergency protocol.')}>✱ &nbsp; Emergency protocol</button><button className="signout" onClick={signOut}><LogOut size={17}/> Sign out</button></div></aside>
+    </div>}</>}{navigation.map(({ label, Icon }) => <button key={label} disabled={!approved} className={`nav-link ${active === label ? 'selected' : ''}`} onClick={() => { setAdminView(false); setActive(label); setTreatmentFocus(undefined); setConnectionFocus(undefined); setMobile(false); }}><Icon size={19}/>{label}</button>)}</nav><div className="sidebar-bottom"><button className={`emergency ${active === 'Emergency' ? 'selected' : ''}`} disabled={!approved} onClick={() => { setAdminView(false); setActive('Emergency'); setTreatmentFocus(undefined); setConnectionFocus(undefined); setMobile(false); }}>✱ &nbsp; Emergency protocol</button><button className="signout" onClick={signOut}><LogOut size={17}/> Sign out</button></div></aside>
     <button type="button" className="rttrack-mobile-backdrop" aria-label="Close navigation" tabIndex={-1} onClick={() => setMobile(false)} hidden={!mobile} />
     <div className="content"><header className="topbar"><button className="menu" aria-label="Toggle navigation" onClick={() => setMobile(!mobile)}>{mobile ? <X/> : <Menu/>}</button><strong>{adminAccess && (adminView || !application) ? 'Administration Centre' : 'Doctor Portal'}</strong><div className="top-actions"><Bell size={19}/><CircleHelp size={19}/><span>{application?.full_name || user.email}</span></div></header><main className="workspace">{message && <p className="alert success" role="status">{message}</p>}{error && <p className="alert error" role="alert">{error}</p>}
-    {adminAccess && (adminView || !application) ? adminSection === 'doctors' ? <AdminDoctorApprovals initialFilter={adminDoctorFilter}/> : adminSection === 'education' ? <EducationManager/> : adminSection === 'reviews' ? <AdminReviewHistory/> : adminSection === 'activity' ? <AdminActivityLog/> : <AdminReports/> : !application ? <section className="panel"><h1>Awaiting administrator activation</h1><p>Your invitation and password setup are complete. A founding administrator must grant your account administrator membership before you can access the Administration Centre. You do not need to register as a clinician.</p>{message && <p className="alert success" role="status">{message}</p>}<button className="outline" onClick={() => void loadAdminRole(user.id)}>Refresh administrator status</button></section> : application?.status === 'deactivated' || application?.status === 'reapproval_requested' ? <section className="panel"><span className="eyebrow">DOCTOR ACCOUNT</span><h1>{application.status === 'deactivated' ? 'Account deactivated' : 'Reapproval requested'}</h1><p className="muted">Clinical access is suspended. Your existing patient connections and records are retained, but you cannot access them unless an administrator reapproves your account.</p>{application.status === 'deactivated' ? <form className="auth-form" onSubmit={requestReapproval}><label>Reason for requesting reapproval<textarea required minLength={15} maxLength={2000} value={reapprovalReason} onChange={e=>setReapprovalReason(e.target.value)} placeholder="Explain why your access should be reviewed." /></label><button className="primary" disabled={reapprovalBusy || reapprovalReason.trim().length<15}>{reapprovalBusy ? 'Submitting…' : 'Request reapproval'}</button></form> : <p>Your request is awaiting administrator review.</p>}<button className="outline" onClick={()=>void loadApplication(user.id)}>Refresh account status</button><button className="text-button" onClick={signOut}>Sign out</button></section> : !approved ? <><span className="eyebrow">DOCTOR VERIFICATION</span><h1>Application {application.status === 'pending' ? 'under review' : 'not approved'}</h1><p className="muted">Your account is registered, but access to patient records is blocked until credentials are checked and approved.</p><section className="panel status-panel"><ShieldCheck size={35} color="#0c5c9f"/><div><h2>{application.status === 'pending' ? 'Verification pending' : 'Verification decision'}</h2><p>{application.status === 'pending' ? 'An RTTRACK administrator must verify your professional registration and institutional affiliation before granting access.' : 'Your application was not approved. Contact the RTTRACK administrator for more information.'}</p><dl><dt>Name</dt><dd>{application.full_name}</dd><dt>Institution</dt><dd>{application.institution}</dd><dt>Registration number</dt><dd>{application.registration_number}</dd><dt>Status</dt><dd><span className="pill">{application.status}</span></dd></dl><button className="outline" onClick={() => loadApplication(user.id)}>Refresh approval status</button></div></section></> : active === 'Connections' ? <ConnectionsPanel role="clinician" userId={user.id} initialFilter={connectionFocus}/> : active === 'Patients' ? <ClinicianPatients userId={user.id} onNavigate={destination => { setActive(destination); setAdminView(false); setTreatmentFocus(undefined); setConnectionFocus(undefined); setMobile(false); }} /> : active === 'Treatment' ? <ClinicianTreatmentManager userId={user.id} focus={treatmentFocus}/> : active === 'Symptoms' ? <ClinicianSymptomReview userId={user.id}/> : active === 'Education' ? <EducationHub/> : active === 'Dashboard' ? <ClinicianDashboard userId={user.id} clinicianName={application.full_name} onNavigate={(destination, context) => { setActive(destination); setAdminView(false); setTreatmentFocus(destination === 'Treatment' ? context : undefined); setConnectionFocus(destination === 'Connections' ? context?.connectionFilter : undefined); setMobile(false); }} /> : <><span className="eyebrow">DOCTOR PORTAL</span><h1>{active === 'Dashboard' ? `Welcome, ${application.full_name.split(' ')[0]}` : active}</h1><p className="muted">Manage your care connections, treatment plans and symptoms.</p><section className="panel"><div className="panel-head"><ClipboardList color="#0c5c9f"/><h2>{active === 'Dashboard' ? 'Clinical workspace' : `${active} module`}</h2></div><p>Open a module from the sidebar to continue.</p><div className="feature-grid"><div><strong>Patient connections</strong><small>Available under Connections</small></div><div><strong>Treatment plans</strong><small>Available under Treatment</small></div><div><strong>Email reminders</strong><small>Planned next · SMS-ready architecture</small></div></div></section></>}
+    {adminAccess && (adminView || !application) ? adminSection === 'doctors' ? <AdminDoctorApprovals initialFilter={adminDoctorFilter}/> : adminSection === 'education' ? <EducationManager/> : adminSection === 'reviews' ? <AdminReviewHistory/> : adminSection === 'activity' ? <AdminActivityLog/> : <AdminReports/> : !application ? <section className="panel"><h1>Awaiting administrator activation</h1><p>Your invitation and password setup are complete. A founding administrator must grant your account administrator membership before you can access the Administration Centre. You do not need to register as a doctor.</p>{message && <p className="alert success" role="status">{message}</p>}<button className="outline" onClick={() => void loadAdminRole(user.id)}>Refresh administrator status</button></section> : application?.status === 'deactivated' || application?.status === 'reapproval_requested' ? <section className="panel"><span className="eyebrow">DOCTOR ACCOUNT</span><h1>{application.status === 'deactivated' ? 'Account deactivated' : 'Reapproval requested'}</h1><p className="muted">Clinical access is suspended. Your existing patient connections and records are retained, but you cannot access them unless an administrator reapproves your account.</p>{application.status === 'deactivated' ? <form className="auth-form" onSubmit={requestReapproval}><label>Reason for requesting reapproval<textarea required minLength={15} maxLength={2000} value={reapprovalReason} onChange={e=>setReapprovalReason(e.target.value)} placeholder="Explain why your access should be reviewed." /></label><button className="primary" disabled={reapprovalBusy || reapprovalReason.trim().length<15}>{reapprovalBusy ? 'Submitting…' : 'Request reapproval'}</button></form> : <p>Your request is awaiting administrator review.</p>}<button className="outline" onClick={()=>void loadApplication(user.id)}>Refresh account status</button><button className="text-button" onClick={signOut}>Sign out</button></section> : !approved ? <><span className="eyebrow">DOCTOR VERIFICATION</span><h1>Application {application.status === 'pending' ? 'under review' : 'not approved'}</h1><p className="muted">Your account is registered, but access to patient records is blocked until credentials are checked and approved.</p><section className="panel status-panel"><ShieldCheck size={35} color="#0c5c9f"/><div><h2>{application.status === 'pending' ? 'Verification pending' : 'Verification decision'}</h2><p>{application.status === 'pending' ? 'An RTTRACK administrator must verify your professional registration and institutional affiliation before granting access.' : 'Your application was not approved. Contact the RTTRACK administrator for more information.'}</p><dl><dt>Name</dt><dd>{application.full_name}</dd><dt>Institution</dt><dd>{application.institution}</dd><dt>Registration number</dt><dd>{application.registration_number}</dd><dt>Status</dt><dd><span className="pill">{application.status}</span></dd></dl><button className="outline" onClick={() => loadApplication(user.id)}>Refresh approval status</button></div></section></> : active === 'Connections' ? <ConnectionsPanel role="clinician" userId={user.id} initialFilter={connectionFocus}/> : active === 'Patients' ? <ClinicianPatients userId={user.id} onNavigate={destination => { setActive(destination); setAdminView(false); setTreatmentFocus(undefined); setConnectionFocus(undefined); setMobile(false); }} /> : active === 'Treatment' ? <ClinicianTreatmentManager userId={user.id} focus={treatmentFocus} doctorName={application.full_name} institution={application.institution}/> : active === 'Symptoms' ? <ClinicianSymptomReview userId={user.id}/> : active === 'Education' ? <EducationHub/> : active === 'Insights' ? <DoctorInsights/> : active === 'Emergency' ? <EmergencyProtocol doctorName={application.full_name} institution={application.institution}/> : active === 'Dashboard' ? <ClinicianDashboard userId={user.id} clinicianName={application.full_name} onNavigate={(destination, context) => { setActive(destination); setAdminView(false); setTreatmentFocus(destination === 'Treatment' ? context : undefined); setConnectionFocus(destination === 'Connections' ? context?.connectionFilter : undefined); setMobile(false); }} /> : <><span className="eyebrow">DOCTOR PORTAL</span><h1>{active === 'Dashboard' ? `Welcome, ${application.full_name.split(' ')[0]}` : active}</h1><p className="muted">Manage your care connections, treatment plans and symptoms.</p><section className="panel"><div className="panel-head"><ClipboardList color="#0c5c9f"/><h2>{active === 'Dashboard' ? 'Clinical workspace' : `${active} module`}</h2></div><p>Open a module from the sidebar to continue.</p><div className="feature-grid"><div><strong>Patient connections</strong><small>Available under Connections</small></div><div><strong>Treatment plans</strong><small>Available under Treatment</small></div><div><strong>Email reminders</strong><small>Planned next · SMS-ready architecture</small></div></div></section></>}
     </main></div>
   </div>;
 }

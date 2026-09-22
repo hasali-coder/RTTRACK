@@ -98,9 +98,9 @@ export default function ConnectionsPanel({ role, userId, initialFilter }: Props)
   async function changeSharing(link: Connection, allow: boolean) {
     if (role !== 'patient' || link.status !== 'active' || !supabase) return;
     if (allow && !sharingConfirmed.includes(link.id)) { setError('Confirm treatment-record access before granting it.'); return; }
-    if (!allow && !window.confirm('Withdraw this clinician’s access to treatment records? This will block new clinician access and updates; your own published plan stays visible to you.')) return;
+    if (!allow && !window.confirm('Withdraw this doctor’s access to treatment records? This will block new doctor access and updates; your own published plan stays visible to you.')) return;
     await execute(async client => client.rpc('rttrack_set_treatment_sharing', { p_link_id: link.id, p_allow: allow }),
-      allow ? 'Treatment-record sharing authorised for this clinician.' : 'Treatment-record sharing withdrawn.');
+      allow ? 'Treatment-record sharing authorised for this doctor.' : 'Treatment-record sharing withdrawn.');
     setSharingConfirmed(previous => previous.filter(id => id !== link.id));
   }
   const openPairIds = new Set(connections.filter(l => l.status === 'pending' || l.status === 'active')

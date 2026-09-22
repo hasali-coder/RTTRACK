@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from 'react';
-import { CalendarDays, CheckCircle2, ClipboardList, Clock3, RefreshCw, ShieldCheck, Stethoscope } from 'lucide-react';
+import { CalendarDays, CheckCircle2, ClipboardList, Clock3, Download, RefreshCw, Search, ShieldCheck, Stethoscope } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { supabase } from './supabase';
 import './treatment.css';
 import './treatment-lifecycle.css';
@@ -89,7 +91,7 @@ function DoseChart({ sessions, target }: { sessions: Session[]; target: number }
     <div className="rtt-heading"><h3>Cumulative Dose Progression</h3>
       <div className="rtt-legend"><span><i className="rtt-dot rtt-dot-blue"/> Recorded</span><span><i className="rtt-dot rtt-dot-grey"/> Prescribed total</span></div>
     </div>
-    <svg viewBox="0 0 680 225" role="img" aria-label={`Recorded delivered dose ${formatDose(cumulative[cumulative.length - 1] ?? 0)} of clinician-entered prescribed total ${formatDose(target)}.`}>
+    <svg viewBox="0 0 680 225" role="img" aria-label={`Recorded delivered dose ${formatDose(cumulative[cumulative.length - 1] ?? 0)} of doctor-entered prescribed total ${formatDose(target)}.`}>
       <title>Recorded cumulative delivered dose by completed fraction</title>
       {[55,100,145,190].map(y => <line key={y} x1="30" y1={y} x2="650" y2={y} stroke="#e8ebf3" strokeWidth="1"/>)}
       <line x1="30" y1={heightFor(target)} x2="650" y2={heightFor(target)} stroke="#aab1c3" strokeDasharray="5 5" strokeWidth="2"/>
@@ -109,7 +111,7 @@ export function TreatmentSummary({ userId, onViewTreatment }: { userId: string; 
     <section className="rtp-card rtp-plan">
       <div className="rtp-card-heading"><div><h2>Radiotherapy Care Plan</h2>
         <p>{plan ? `${plan.title} · ${plan.technique}` : 'No active treatment plan'}</p></div>
-        <span className="rtp-tag">{plan ? 'Clinician-published plan' : 'No active plan'}</span></div>
+        <span className="rtp-tag">{plan ? 'Doctor-published plan' : 'No active plan'}</span></div>
       <div className="rtp-plan-body">
         {plan ? <PlanRing done={Number(plan.completed_fractions)} total={plan.total_fractions}/> :
           <div className="rtp-empty-ring"><ShieldCheck size={31}/><span>Not started</span></div>}
@@ -117,11 +119,11 @@ export function TreatmentSummary({ userId, onViewTreatment }: { userId: string; 
           {loading ? <p role="status">Loading your treatment information…</p> : error ?
             <><p role="alert">Could not load the plan: {error}</p><button type="button" className="rtt-outline" onClick={() => void refresh()}>Retry</button></> : plan ?
             <><h3>Sessions completed: {plan.completed_fractions} / {plan.total_fractions}</h3>
-              <p>Recorded delivered dose: {formatDose(Number(plan.delivered_total_gy))}<br/>Prescribed total (clinician-entered): {formatDose(Number(plan.prescribed_total_gy))}</p>
+              <p>Recorded delivered dose: {formatDose(Number(plan.delivered_total_gy))}<br/>Prescribed total (doctor-entered): {formatDose(Number(plan.prescribed_total_gy))}</p>
               <div className="rtt-progress" role="progressbar" aria-valuemin={0} aria-valuemax={plan.total_fractions}
                 aria-valuenow={Number(plan.completed_fractions)}><span style={{ width: `${Math.min(100, (Number(plan.completed_fractions) / plan.total_fractions) * 100)}%` }}/></div>
               <button type="button" className="rtt-link" onClick={onViewTreatment}>View treatment details →</button></> :
-            <><h3>Your treatment information will appear here</h3><p>Connect with an approved clinician. Only their published treatment plan will display here.</p>
+            <><h3>Your treatment information will appear here</h3><p>Connect with an approved doctor. Only their published treatment plan will display here.</p>
               <div className="rtp-placeholder-bar" aria-hidden="true"/></>}
         </div>
       </div>
@@ -129,7 +131,7 @@ export function TreatmentSummary({ userId, onViewTreatment }: { userId: string; 
     <section className="rtp-card rtp-next"><div className="rtp-kicker"><CalendarDays size={19}/> NEXT SESSION</div>
       <h2>{plan?.next_session_at ? new Date(plan.next_session_at).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' }) : 'Not scheduled'}</h2>
       <p>{plan?.next_session_at ? formattedTime(plan.next_session_at) : 'No upcoming appointment is available.'}</p>
-      <div className="rtp-next-location">{plan?.next_session_at ? (plan.next_session_location || 'Location not provided by clinician') : 'Your clinician will schedule your appointment here.'}</div>
+      <div className="rtp-next-location">{plan?.next_session_at ? (plan.next_session_location || 'Location not provided by doctor') : 'Your doctor will schedule your appointment here.'}</div>
       <button type="button" disabled>Preparation guide not available yet</button>
     </section>
   </div>;
@@ -158,12 +160,12 @@ export function TreatmentTracker({ userId }: { userId: string }) {
           <div className="rtt-metrics"><div><small>Recorded delivered dose</small><strong>{formatDose(Number(plan.delivered_total_gy))}</strong></div>
             <div><small>Prescribed total dose</small><strong>{formatDose(Number(plan.prescribed_total_gy))}</strong></div>
             <div><small>Session completion</small><strong>{percent}%</strong></div>
-            <div><small>Clinician</small><strong>{plan.clinician_name}</strong></div></div>
+            <div><small>Doctor</small><strong>{plan.clinician_name}</strong></div></div>
         </section>
         <section className="rtt-card"><div className="rtt-heading"><h3>Session log</h3><span className="rtt-note">Times shown in your device's time zone</span></div>
           {sessionsError && <p className="rtt-error" role="alert">{sessionsError}</p>}
           {sessionsLoading ? <p role="status">Loading sessions…</p> : sessions.length === 0 ?
-            <p>No sessions scheduled yet. Your clinician will add appointments.</p> :
+            <p>No sessions scheduled yet. Your doctor will add appointments.</p> :
             <div className="rtt-table-scroll"><table className="rtt-table"><thead><tr><th>Fraction</th><th>Scheduled time</th><th>Delivered dose</th><th>Status</th><th>Location</th></tr></thead>
               <tbody>{sessions.map(s => <tr key={s.session_id}><td>#{s.fraction_number}</td><td>{formattedTime(s.scheduled_for)}</td>
                 <td>{s.delivered_gy === null ? 'Not recorded' : formatDose(Number(s.delivered_gy))}</td>
@@ -201,9 +203,10 @@ export function TreatmentTracker({ userId }: { userId: string }) {
 
 // RTTRACK_CONTEXT_FOCUS_V1 — scoped plan navigation; does not alter treatment RPCs.
 type TreatmentFocus = { planId?: string; patientId?: string; status?: 'draft' | 'active'; fractionNumber?: number };
-export function ClinicianTreatmentManager({ userId, focus }: { userId: string; focus?: TreatmentFocus }) {
+export function ClinicianTreatmentManager({ userId, focus, doctorName, institution }: { userId: string; focus?: TreatmentFocus; doctorName: string; institution: string }) {
   const { plans, loading, error, refresh } = usePlans(userId);
   const [patients, setPatients] = useState<LinkedPatient[]>([]);
+  const [patientSearch, setPatientSearch] = useState('');
   const [selectedPlanId, setSelectedPlanId] = useState('');
   const [patientId, setPatientId] = useState('');
   const [title, setTitle] = useState('');
@@ -234,6 +237,12 @@ export function ClinicianTreatmentManager({ userId, focus }: { userId: string; f
   // If access to that patient is withdrawn, hide their register immediately.
   const patientSelected = !!patientId && patients.some(p => p.patient_id === patientId);
   const patientPlans = patientSelected ? plans.filter(p => p.patient_id === patientId) : [];
+  const patientOptions = useMemo(() => {
+    const query = patientSearch.trim().toLocaleLowerCase();
+    const filtered = query ? patients.filter(patient => patient.full_name.toLocaleLowerCase().includes(query)) : patients;
+    const chosen = patients.find(patient => patient.patient_id === patientId);
+    return chosen && !filtered.some(patient => patient.patient_id === chosen.patient_id) ? [chosen, ...filtered] : filtered;
+  }, [patients, patientSearch, patientId]);
   const selected = patientPlans.find(p => p.plan_id === selectedPlanId) ?? null;
   const { sessions, loading: sessionsLoading, error: sessionsError, refresh: refreshSessions } = useSessions(selected?.plan_id ?? null);
   // Native dialog provides focus containment and Escape-key dismissal.
@@ -306,7 +315,7 @@ export function ClinicianTreatmentManager({ userId, focus }: { userId: string; f
     if (!patientId || !title.trim() || !site.trim() || !technique.trim() ||
         !Number.isInteger(Number(fractions)) || Number(fractions) < 1 || Number(fractions) > 1000 ||
         !Number.isFinite(Number(totalDose)) || Number(totalDose) <= 0) {
-      setActionError('Complete all clinician-entered plan fields with valid positive values.'); return;
+      setActionError('Complete all doctor-entered plan fields with valid positive values.'); return;
     }
     setWorking(true); setActionError(''); setMessage('');
     try {
@@ -329,7 +338,7 @@ export function ClinicianTreatmentManager({ userId, focus }: { userId: string; f
       setActionError(`This patient already has a published plan (${conflictingActivePlan.title}). RTTRACK currently permits only one published plan per patient. No plan was changed. Keep this draft until a reviewed plan-completion or supersession workflow is added.`);
       return;
     }
-    if (!window.confirm('Publish this clinician-entered plan to the patient? Check all entered values first.')) return;
+    if (!window.confirm('Publish this doctor-entered plan to the patient? Check all entered values first.')) return;
     void doAction(async client=>await client.rpc('rttrack_publish_treatment_plan',{p_plan_id:selected.plan_id}), 'Plan published to the patient.');
   }
   async function closePlan() {
@@ -384,6 +393,57 @@ export function ClinicianTreatmentManager({ userId, focus }: { userId: string; f
     void doAction(async client=>await client.rpc('rttrack_mark_fraction_missed', {p_session_id:session.session_id}), 'Fraction marked missed.');
   }
 
+  function exportFractionsPdf() {
+    if (!selected || sessionsLoading) return;
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const locations = [...new Set(sessions.map(session => session.location?.trim()).filter((value): value is string => !!value))];
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.text('RTTRACK', 40, 42);
+    doc.setFontSize(13); doc.text('Treatment Fraction Record', 40, 62);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+    const header = [
+      `Patient: ${selected.patient_name}`,
+      `Doctor: ${doctorName}`,
+      `Hospital / Institution: ${institution || 'Not recorded'}`,
+      `Recorded treatment location: ${locations.length ? locations.join(', ') : 'Not recorded'}`,
+      `Plan: ${selected.title}`,
+      `Treatment site: ${selected.treatment_site}`,
+      `Technique: ${selected.technique}`,
+      `Prescribed fractions: ${selected.total_fractions}`,
+      `Prescribed total dose: ${formatDose(Number(selected.prescribed_total_gy))}`,
+      `Plan status: ${selected.status === 'active' ? 'Published' : selected.status}`,
+    ];
+    header.forEach((line, index) => doc.text(line, 40, 84 + index * 13));
+    autoTable(doc, {
+      startY: 224,
+      head: [['Fraction', 'Scheduled', 'Status', 'Delivered dose', 'Completed at', 'Location']],
+      body: sessions
+        .slice()
+        .sort((a, b) => a.fraction_number - b.fraction_number)
+        .map(session => [
+          String(session.fraction_number),
+          formattedTime(session.scheduled_for),
+          session.status,
+          session.delivered_gy == null ? 'Not recorded' : formatDose(Number(session.delivered_gy)),
+          session.completed_at ? formattedTime(session.completed_at) : 'Not recorded',
+          session.location || 'Not recorded',
+        ]),
+      styles: { fontSize: 8, cellPadding: 4 },
+      headStyles: { fillColor: [11, 18, 92] },
+      margin: { left: 40, right: 40 },
+    });
+    const pageCount = doc.getNumberOfPages();
+    for (let page = 1; page <= pageCount; page += 1) {
+      doc.setPage(page);
+      doc.setFontSize(8);
+      doc.setTextColor(80);
+      doc.text(`Printed by: ${doctorName}`, 40, 812);
+      doc.text(`Generated: ${new Date().toLocaleString()}`, 40, 825);
+      doc.text(`Page ${page} of ${pageCount}`, 515, 825, { align: 'right' });
+    }
+    const safePatient = selected.patient_name.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'patient';
+    const safePlan = selected.title.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'plan';
+    doc.save(`rttrack-${safePatient}-${safePlan}-fractions.pdf`);
+  }
   return <div className="rtt-module rtt-clinician">
     {focusMessage && <p className="rtt-note" role="status">{focusMessage}</p>}
     {focus?.status && !focus.planId && <section className="rtt-card" aria-label="Plans selected from dashboard">
@@ -407,13 +467,15 @@ export function ClinicianTreatmentManager({ userId, focus }: { userId: string; f
         <p className="rtt-note">Only patients with an active connection and authorised treatment sharing appear.</p>
         {patients.length === 0 ? <p>No patients have authorised treatment-record access. Connect with a patient and confirm they have authorised treatment sharing.</p> :
           <form className="rtt-form" onSubmit={createPlan}>
+            <label className="rtt-patient-search">Search connected patients<div className="rtt-search-input"><Search size={16}/><input type="search" value={patientSearch} onChange={e=>setPatientSearch(e.target.value)} placeholder="Search patient by name…" autoComplete="off"/></div></label>
             <label>Connected patient<select required value={patientId} onChange={e=>{setPatientId(e.target.value);setCloseModalOpen(false);setSelectedPlanId('');setFractionNumber('');setScheduledFor('');setLocation('');setDoses({});setActionError('');setMessage('');}}><option value="">Select a connected patient</option>
-              {patients.map(p=><option key={p.patient_id} value={p.patient_id}>{p.full_name}</option>)}</select></label>
-            <label>Plan title<input required minLength={3} maxLength={120} value={title} onChange={e=>setTitle(e.target.value)} placeholder="Enter the clinician's plan title"/></label>
+              {patientOptions.map(p=><option key={p.patient_id} value={p.patient_id}>{p.full_name}</option>)}</select></label>
+            {patientSearch.trim() && patientOptions.length === 0 && <p className="rtt-note">No authorised patients match that search.</p>}
+            <label>Plan title<input required minLength={3} maxLength={120} value={title} onChange={e=>setTitle(e.target.value)} placeholder="Enter the doctor's plan title"/></label>
             <div className="rtt-two"><label>Treatment site<input required minLength={2} maxLength={120} value={site} onChange={e=>setSite(e.target.value)} placeholder="From clinical record"/></label>
               <label>Technique<input required minLength={2} maxLength={120} value={technique} onChange={e=>setTechnique(e.target.value)} placeholder="From clinical record"/></label></div>
-            <div className="rtt-two"><label>Prescribed fractions<input required type="number" min="1" max="1000" step="1" value={fractions} onChange={e=>setFractions(e.target.value)} placeholder="Clinician-entered"/></label>
-              <label>Prescribed total dose (Gy)<input required type="number" min="0.001" step="0.001" value={totalDose} onChange={e=>setTotalDose(e.target.value)} placeholder="Clinician-entered"/></label></div>
+            <div className="rtt-two"><label>Prescribed fractions<input required type="number" min="1" max="1000" step="1" value={fractions} onChange={e=>setFractions(e.target.value)} placeholder="Doctor-entered"/></label>
+              <label>Prescribed total dose (Gy)<input required type="number" min="0.001" step="0.001" value={totalDose} onChange={e=>setTotalDose(e.target.value)} placeholder="Doctor-entered"/></label></div>
             <div className="rtt-two"><label>Planned start (optional)<input type="date" value={startOn} onChange={e=>setStartOn(e.target.value)}/></label>
               <label>Estimated end (optional)<input type="date" min={startOn || undefined} value={endOn} onChange={e=>setEndOn(e.target.value)}/></label></div>
             <button className="rtt-primary" disabled={working} type="submit">{working?'Saving…':'Create draft'}</button>
@@ -435,7 +497,7 @@ export function ClinicianTreatmentManager({ userId, focus }: { userId: string; f
               <p>Patient: {selected.patient_name}<br/>Site: {selected.treatment_site} · {selected.technique}<br/>Fractions: {selected.total_fractions} · Prescribed total: {formatDose(Number(selected.prescribed_total_gy))}</p>
               <p>Recorded completed: {selected.completed_fractions} · Delivered: {formatDose(Number(selected.delivered_total_gy))}</p>
               <button className="rtt-outline rtt-jump-fractions" type="button" onClick={goToFractionRecords}>Go to fraction records ↓</button>
-              {!ownedPlan && <p className="rtt-note">Read-only: this plan was entered by another connected clinician.</p>}
+              {!ownedPlan && <p className="rtt-note">Read-only: this plan was entered by another connected doctor.</p>}
               {!canEdit && ownedPlan && <p className="rtt-note">Editing unavailable: an active patient connection is required.</p>}
               {selected.status !== 'draft' && <div className="rtt-lifecycle-history">
                 <p><strong>Plan status:</strong> {selected.status === 'active' ? 'Published' : selected.status}</p>
@@ -470,7 +532,7 @@ export function ClinicianTreatmentManager({ userId, focus }: { userId: string; f
     <dialog ref={closureDialogRef} className="rtt-closure-dialog" aria-labelledby="rtt-closure-title" aria-describedby="rtt-closure-description" onClose={()=>setCloseModalOpen(false)} onCancel={event=>{if(working) event.preventDefault(); else setCloseModalOpen(false);}}>
       <div className="rtt-closure-modal-content">
         <div className="rtt-closure-modal-heading"><h2 id="rtt-closure-title">Close treatment plan</h2><button type="button" className="rtt-outline rtt-closure-dismiss" aria-label="Close dialog without changing plan" disabled={working} onClick={()=>setCloseModalOpen(false)}>✕</button></div>
-        <p id="rtt-closure-description" className="rtt-note">{selected ? `Plan: ${selected.title}. Closing preserves recorded sessions and removes future appointments from upcoming lists. Completion is a clinician-recorded decision.` : 'Select an active plan before closing.'}</p>
+        <p id="rtt-closure-description" className="rtt-note">{selected ? `Plan: ${selected.title}. Closing preserves recorded sessions and removes future appointments from upcoming lists. Completion is a doctor-recorded decision.` : 'Select an active plan before closing.'}</p>
         <div className="rtt-lifecycle-action">
           <label>Closure outcome<select value={closureOutcome} disabled={working} onChange={e=>setClosureOutcome(e.target.value as 'completed' | 'discontinued')}><option value="completed">Completed</option><option value="discontinued">Discontinued</option></select></label>
           <label>Clinical reason (required)<textarea minLength={10} maxLength={1000} rows={3} value={closureReason} disabled={working} onChange={e=>setClosureReason(e.target.value)} placeholder="Enter a documented reason (10–1000 characters)"/></label>
@@ -481,12 +543,12 @@ export function ClinicianTreatmentManager({ userId, focus }: { userId: string; f
         {actionError && <p className="rtt-error" role="alert">{actionError}</p>}
       </div>
     </dialog>
-    {selected && <section className="rtt-card rtt-fraction-records" ref={fractionRecordsRef} id="rtt-fraction-records"><div className="rtt-heading"><h3>Fraction records — {selected.patient_name}</h3><span className="rtt-note">Plan: {selected.title} · Only the author with an active connection can record delivery</span></div>
+    {selected && <section className="rtt-card rtt-fraction-records" ref={fractionRecordsRef} id="rtt-fraction-records"><div className="rtt-heading rtt-fraction-heading"><div><h3>Fraction records — {selected.patient_name}</h3><span className="rtt-note">Plan: {selected.title} · Only the author with an active connection can record delivery</span></div><button type="button" className="rtt-outline" disabled={sessionsLoading || sessions.length === 0} onClick={exportFractionsPdf}><Download size={16}/> Export fractions PDF</button></div>
       {sessionsError && <p className="rtt-error" role="alert">{sessionsError}</p>}
       {sessionsLoading ? <p role="status">Loading fraction records…</p> : sessions.length === 0 ? <p>No fractions scheduled for this plan.</p> :
-        <div className="rtt-table-scroll rtt-fractions-scroll" role="region" aria-label="Fraction records table" tabIndex={0}><table className="rtt-table rtt-fractions-table"><thead><tr><th>Fraction</th><th>Scheduled</th><th>Status</th><th>Recorded dose</th><th>Actions</th></tr></thead><tbody>
+        <div className="rtt-table-scroll rtt-fractions-scroll" role="region" aria-label="Fraction records table" tabIndex={0}><table className="rtt-table rtt-fractions-table"><thead><tr><th>Fraction</th><th>Scheduled</th><th>Status</th><th>Recorded dose</th><th>Completed</th><th>Actions</th></tr></thead><tbody>
           {sessions.map(s=> <tr key={s.session_id}><td data-label="Fraction">#{s.fraction_number}</td><td data-label="Scheduled">{formattedTime(s.scheduled_for)}</td><td data-label="Status"><span className={`rtt-pill rtt-pill-${s.status}`}>{s.status}</span></td>
-            <td data-label="Recorded dose">{s.delivered_gy===null?'Not recorded':formatDose(Number(s.delivered_gy))}</td><td data-label="Actions">{canEdit && selected.status==='active' && s.status==='scheduled' && new Date(s.scheduled_for).getTime() <= Date.now() ?
+            <td data-label="Recorded dose">{s.delivered_gy===null?'Not recorded':formatDose(Number(s.delivered_gy))}</td><td data-label="Completed">{s.completed_at ? formattedTime(s.completed_at) : 'Not recorded'}</td><td data-label="Actions">{canEdit && selected.status==='active' && s.status==='scheduled' && new Date(s.scheduled_for).getTime() <= Date.now() ?
               <div className="rtt-row-actions"><label>Delivered dose (Gy)<input aria-label={`Delivered dose for fraction ${s.fraction_number} in Gy`} type="number" min="0.001" step="0.001" placeholder="Actual recorded" value={doses[s.session_id]??''} onChange={e=>setDoses(old=>({...old,[s.session_id]:e.target.value}))}/></label>
                 <button className="rtt-primary" disabled={working} onClick={()=>complete(s)} type="button">Record completed</button>
                 <button className="rtt-outline" disabled={working} onClick={()=>markMissed(s)} type="button">Mark missed</button></div>:
