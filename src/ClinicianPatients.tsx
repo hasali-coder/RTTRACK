@@ -1,3 +1,4 @@
+import { formatDate as displayDate, formatDateTime as displayDateTime } from './date-format';
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { ArrowLeft, ArrowRight, BookOpenCheck, CalendarDays, HeartPulse, RefreshCw, Search, Users } from 'lucide-react';
 import { supabase } from './supabase';
@@ -39,18 +40,8 @@ const empty: LoadState = {
   errors: { connections: '', treatment: '', symptoms: '', plans: '' },
 };
 
-function formatDate(value: string | null) {
-  if (!value) return 'Not recorded';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? 'Date unavailable' : date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-}
-function formatAppointment(value: string | null) {
-  if (!value) return 'No upcoming session listed';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? 'Date unavailable' : date.toLocaleString(undefined, {
-    year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
-  });
-}
+function formatDate(value: string | null) { return value ? displayDate(value) : 'Not recorded'; }
+function formatAppointment(value: string | null) { return value ? displayDateTime(value) : 'No upcoming session listed'; }
 function errorText(error: unknown) {
   return error instanceof Error ? error.message : 'The service could not be reached. Please retry.';
 }

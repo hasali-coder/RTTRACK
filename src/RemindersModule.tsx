@@ -1,3 +1,4 @@
+import { formatDateTime } from './date-format';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Bell, CalendarDays, CheckCircle2, Clock3, RefreshCw } from 'lucide-react';
 import { supabase } from './supabase';
@@ -8,7 +9,7 @@ type EmailPreference = { notification_type: 'personal_reminder' | 'appointment';
 type Reminder = { reminder_id: string; title: string; due_at: string; status: 'pending' | 'done' | 'cancelled'; created_at: string; finished_at: string | null };
 type Plan = { plan_id: string; title: string; status: string; next_session_at: string | null; next_session_location: string | null; next_fraction_number: number | null };
 type Appointment = { session_id: string; fraction_number: number; scheduled_for: string; location: string | null; status: string; title: string };
-function readable(value: string): string { return new Date(value).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }); }
+function readable(value: string): string { return formatDateTime(value); }
 function errorText(error: unknown): string { return error instanceof Error ? error.message : 'The request could not be completed.'; }
 
 export default function PatientReminders() {
@@ -107,14 +108,14 @@ export default function PatientReminders() {
   const previous = reminders.filter(item => item.status !== 'pending');
   return <section className="rtr-root" aria-labelledby="rtr-heading">
     <div className="rtr-heading"><div><span className="rtr-kicker">RTTRACK · DAILY ADHERENCE</span><h2 id="rtr-heading">Reminders & appointments</h2><p>Keep track of appointments and personal care tasks.</p></div><button className="rtr-secondary" type="button" onClick={() => void refresh()} disabled={loading || busy}><RefreshCw size={16}/> Refresh</button></div>
-    <div className="rtr-banner" role="note"><strong>Development notice:</strong> Emails are sent only if you opt in AND the administrator activates the scheduled email service. They may be delayed or fail. No SMS or emergency alerts are provided; clinicians do not monitor this screen. Follow your care team's instructions for medical decisions.</div>
+    <div className="rtr-banner" role="note"><strong>Notification status:</strong> Email delivery depends on your preference and the RTTRACK notification service being active. SMS is not currently available.</div>
     {error && <p className="rtr-alert rtr-error" role="alert">{error}</p>}
     {success && <p className="rtr-alert rtr-success" role="status">{success}</p>}
     <div className="rtr-grid"><article className="rtr-card"><h3><CalendarDays size={21}/> Scheduled radiotherapy sessions</h3>{loading ? <p>Loading appointments…</p> : appointments.length === 0 ? <p className="rtr-muted">No upcoming scheduled sessions in published plans.</p> : <ul className="rtr-list">{appointments.map(a => <li key={a.session_id}><span className="rtr-date">{readable(a.scheduled_for)}</span><strong>{a.title} · Fraction {a.fraction_number}</strong><small>{a.location || 'Location not entered'}</small></li>)}</ul>}<small className="rtr-note">These dates come from your published treatment records; only your care team can change them.</small></article>
     <article className="rtr-card"><h3><Clock3 size={21}/> Add a personal reminder</h3><p className="rtr-muted">For personal, non-emergency care tasks. This does not alter medication prescriptions or appointments.</p><form onSubmit={event => void create(event)} className="rtr-form"><label>Task name<input required minLength={2} maxLength={100} value={title} onChange={event => setTitle(event.target.value)} placeholder="For example, prepare for tomorrow's visit" disabled={busy}/></label><label>Date and time<input required type="datetime-local" value={dueLocal} onChange={event => setDueLocal(event.target.value)} disabled={busy}/></label><button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save reminder'}</button></form></article></div>
     <article className="rtn-card" aria-labelledby="rtn-title">
       <h3 id="rtn-title"><Bell size={21}/> Email notification preferences</h3>
-      <p className="rtn-offline"><strong>Development feature:</strong> Email delivery requires the administrator to deploy and activate RTTRACK's scheduled notification service. Enabling a preference alone does not prove delivery. No SMS or emergency alerts are available.</p>
+      <p className="rtn-offline"><strong>Email delivery:</strong> Messages are sent only when the RTTRACK scheduled notification service is active. SMS preferences are not currently available.</p>
       <label className="rtn-toggle"><span><strong>Personal reminder emails</strong><small>Receive a generic email when a personal reminder is due, if email delivery is active. Titles and health details are excluded.</small></span><input type="checkbox" checked={preferenceEnabled('personal_reminder')} disabled={loading || busy || preferenceBusy} onChange={event => void changeEmailPreference('personal_reminder', event.target.checked)}/></label>
       <label className="rtn-toggle"><span><strong>Appointment emails</strong><small>Receive a generic email approximately 24 hours before a scheduled fraction, if delivery is active. Dates and treatment details are excluded.</small></span><input type="checkbox" checked={preferenceEnabled('appointment')} disabled={loading || busy || preferenceBusy} onChange={event => void changeEmailPreference('appointment', event.target.checked)}/></label>
       <small className="rtn-status" role="status">{preferenceBusy ? 'Saving preference…' : 'SMS preferences are not yet available.'}</small>

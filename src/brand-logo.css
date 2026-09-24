@@ -1,0 +1,10 @@
+.rttrack-brand-logo-wrap{display:flex;align-items:center;min-width:0}
+.rttrack-brand-logo-wrap-auth{margin-bottom:28px}
+.rttrack-brand-logo{display:block;height:auto;object-fit:contain;user-select:none}
+.rttrack-brand-logo-auth{width:min(100%,310px);max-height:78px;object-position:left center}
+.rttrack-brand-logo-wrap-sidebar{flex:0 0 auto;margin:0 0 8px}
+.rttrack-brand-logo-sidebar{width:205px;max-width:100%;max-height:48px;object-position:left center}
+@media(max-width:800px){
+  .rttrack-brand-logo-auth{width:min(100%,270px);max-height:70px}
+  .rttrack-brand-logo-sidebar{width:190px;max-height:46px}
+}

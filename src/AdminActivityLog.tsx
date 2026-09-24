@@ -1,3 +1,4 @@
+import { formatDateTime } from './date-format';
 import { useCallback, useEffect, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { supabase } from './supabase';
@@ -28,6 +29,6 @@ export default function AdminActivityLog() {
   useEffect(()=>{void refresh();},[refresh]);
   return <section className="rtp-page"><header className="rtp-heading"><div><span className="eyebrow">ADMINISTRATION</span><h1>Activity log</h1><p>Doctor decisions, access changes and Education Hub actions. Maximum 500 matching events.</p></div><button className="outline" type="button" onClick={()=>void refresh()} disabled={loading}><RefreshCw size={16}/> Refresh</button></header>
     <div className="rtp-filters"><label>From<input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label>To<input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label><label>Action<select value={action} onChange={e=>setAction(e.target.value)}><option value="">All actions</option>{actions.map(item=><option key={item} value={item}>{label(item)}</option>)}</select></label><label>Actor ID<input value={actor} onChange={e=>setActor(e.target.value)} placeholder="Optional UUID"/></label></div>
-    {error && <p role="alert" className="rtp-error">{error}</p>}{loading ? <p role="status">Loading activity…</p> : <div className="rtp-table-wrap"><table className="rtp-table"><thead><tr><th>Date and time</th><th>Actor</th><th>Action</th><th>Subject</th></tr></thead><tbody>{rows.map(row=><tr key={row.event_key}><td>{new Date(row.occurred_at).toLocaleString()}</td><td>{row.actor_label}<small>{row.actor_id}</small></td><td>{label(row.action)}</td><td>{row.subject}</td></tr>)}</tbody></table>{rows.length===0 && !error && <p className="rtp-empty">No matching administrative activity.</p>}</div>}
+    {error && <p role="alert" className="rtp-error">{error}</p>}{loading ? <p role="status">Loading activity…</p> : <div className="rtp-table-wrap"><table className="rtp-table"><thead><tr><th>Date and time</th><th>Actor</th><th>Action</th><th>Subject</th></tr></thead><tbody>{rows.map(row=><tr key={row.event_key}><td>{formatDateTime(row.occurred_at)}</td><td>{row.actor_label}<small>{row.actor_id}</small></td><td>{label(row.action)}</td><td>{row.subject}</td></tr>)}</tbody></table>{rows.length===0 && !error && <p className="rtp-empty">No matching administrative activity.</p>}</div>}
   </section>;
 }

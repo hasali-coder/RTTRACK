@@ -1,3 +1,4 @@
+import { formatDateTime } from './date-format';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { supabase } from './supabase';
@@ -31,7 +32,7 @@ export default function AdminReviewHistory() {
     <div className="rtda-controls rtda-history-controls"><label><span>Search ID or note</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search reviews" type="search"/></label>
     <label><span>Decision</span><select value={decision} onChange={e=>setDecision(e.target.value)}><option value="all">All</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select></label>
     <label><span>From</span><input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label><span>To</span><input type="date" value={to} min={from||undefined} onChange={e=>setTo(e.target.value)}/></label></div>
-    <div className="rtda-panel"><div className="rtda-panel-head"><h2>Review decisions</h2><span>{filtered.length} shown</span></div>{loading?<p className="rtda-empty">Loading…</p>:filtered.length===0?<p className="rtda-empty">No recorded reviews match these filters. Historical manual SQL approvals may not appear.</p>:<div className="rtda-history-table"><table><thead><tr><th>Date</th><th>Doctor ID</th><th>Decision</th><th>Evidence note</th></tr></thead><tbody>{filtered.map(r=><tr key={r.id}><td>{new Date(r.decided_at).toLocaleString()}</td><td>{r.application_user_id}</td><td>{r.decision}</td><td>{r.evidence_note}</td></tr>)}</tbody></table></div>}
+    <div className="rtda-panel"><div className="rtda-panel-head"><h2>Review decisions</h2><span>{filtered.length} shown</span></div>{loading?<p className="rtda-empty">Loading…</p>:filtered.length===0?<p className="rtda-empty">No recorded reviews match these filters. Historical manual SQL approvals may not appear.</p>:<div className="rtda-history-table"><table><thead><tr><th>Date</th><th>Doctor ID</th><th>Decision</th><th>Evidence note</th></tr></thead><tbody>{filtered.map(r=><tr key={r.id}><td>{formatDateTime(r.decided_at)}</td><td>{r.application_user_id}</td><td>{r.decision}</td><td>{r.evidence_note}</td></tr>)}</tbody></table></div>}
     {rows.length>=100&&<p className="rtda-empty">The latest 100 review records were retrieved; this is not a complete history.</p>}</div>
   </section>;
 }

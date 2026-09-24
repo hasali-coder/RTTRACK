@@ -1,3 +1,5 @@
+import { addRttrackLogoToPdf } from './branding';
+import { formatDateTime, formatWeekdayDate } from './date-format';
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { CalendarDays, CheckCircle2, ClipboardList, Clock3, Download, RefreshCw, Search, ShieldCheck, Stethoscope } from 'lucide-react';
 import { jsPDF } from 'jspdf';
@@ -24,9 +26,7 @@ type Session = {
 };
 type LinkedPatient = { patient_id: string; full_name: string };
 
-const formattedTime = (value: string) => new Date(value).toLocaleString(undefined, {
-  year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
-});
+const formattedTime = formatDateTime;
 const formatDose = (value: number) => `${Number(value).toLocaleString(undefined, { maximumFractionDigits: 3 })} Gy`;
 
 function usePlans(userId: string) {
@@ -129,7 +129,7 @@ export function TreatmentSummary({ userId, onViewTreatment }: { userId: string; 
       </div>
     </section>
     <section className="rtp-card rtp-next"><div className="rtp-kicker"><CalendarDays size={19}/> NEXT SESSION</div>
-      <h2>{plan?.next_session_at ? new Date(plan.next_session_at).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' }) : 'Not scheduled'}</h2>
+      <h2>{plan?.next_session_at ? formatWeekdayDate(plan.next_session_at) : 'Not scheduled'}</h2>
       <p>{plan?.next_session_at ? formattedTime(plan.next_session_at) : 'No upcoming appointment is available.'}</p>
       <div className="rtp-next-location">{plan?.next_session_at ? (plan.next_session_location || 'Location not provided by doctor') : 'Your doctor will schedule your appointment here.'}</div>
       <button type="button" disabled>Preparation guide not available yet</button>
@@ -144,63 +144,98 @@ export function TreatmentTracker({ userId }: { userId: string }) {
   const [historyPlanId, setHistoryPlanId] = useState('');
   const historyPlan = plans.find(p => p.plan_id === historyPlanId && p.status !== 'draft');
   const { sessions: historySessions, loading: historyLoading, error: historyError } = useSessions(historyPlan?.plan_id ?? null);
+  const historyDialogRef = useRef<HTMLDialogElement | null>(null);
   const percent = plan ? Math.round((Number(plan.completed_fractions) / plan.total_fractions) * 100) : 0;
+
+  useEffect(() => {
+    const dialog = historyDialogRef.current;
+    if (!dialog) return;
+    if (historyPlan && !dialog.open) dialog.showModal();
+    if (!historyPlan && dialog.open) dialog.close();
+  }, [historyPlan]);
+
+  const closeHistory = () => setHistoryPlanId('');
+
   return <div className="rtt-module">
     <div className="rtt-page-header"><div><span className="rtt-eyebrow">PATIENT PORTAL · TREATMENT</span><h1>Treatment Tracker</h1><p>{plan ? `${plan.title} · ${plan.treatment_site} (${plan.technique})` : 'Your prescribed care plan and appointment history'}</p></div>
       <button type="button" className="rtt-outline" onClick={() => { void refresh(); void refreshSessions(); }}><RefreshCw size={17}/> Refresh</button></div>
+
     {loading ? <p role="status">Loading treatment…</p> : error ? <p className="rtt-error" role="alert">{error}</p> : !plan ?
-      <section className="rtt-card"><h2>No active treatment plan</h2><p>No active plan is recorded. Previously published plans, if any, remain accessible in your treatment history below.</p></section> : <>
+      <section className="rtt-card"><h2>No active treatment plan</h2><p>No active plan is recorded. Previously published plans, if any, remain accessible in your treatment history.</p></section> : <>
         <div className="rtt-top-grid"><DoseChart sessions={sessions} target={Number(plan.prescribed_total_gy)}/>
           <section className="rtt-card rtt-progress-card"><h3>Overall Progress</h3><PlanRing done={Number(plan.completed_fractions)} total={plan.total_fractions}/>
             <div className="rtt-stat"><CheckCircle2 size={17}/> Completed <strong>{plan.completed_fractions}</strong></div>
             <div className="rtt-stat"><Clock3 size={17}/> Not recorded completed <strong>{Math.max(0,plan.total_fractions-Number(plan.completed_fractions))}</strong></div>
             <div className="rtt-stat"><ClipboardList size={17}/> Marked missed <strong>{plan.missed_fractions}</strong></div>
           </section></div>
+
         <section className="rtt-card"><div className="rtt-heading"><h3>Treatment details</h3><span className="rtt-pill rtt-pill-active">Published</span></div>
           <div className="rtt-metrics"><div><small>Recorded delivered dose</small><strong>{formatDose(Number(plan.delivered_total_gy))}</strong></div>
             <div><small>Prescribed total dose</small><strong>{formatDose(Number(plan.prescribed_total_gy))}</strong></div>
             <div><small>Session completion</small><strong>{percent}%</strong></div>
             <div><small>Doctor</small><strong>{plan.clinician_name}</strong></div></div>
         </section>
-        <section className="rtt-card"><div className="rtt-heading"><h3>Session log</h3><span className="rtt-note">Times shown in your device's time zone</span></div>
-          {sessionsError && <p className="rtt-error" role="alert">{sessionsError}</p>}
-          {sessionsLoading ? <p role="status">Loading sessions…</p> : sessions.length === 0 ?
-            <p>No sessions scheduled yet. Your doctor will add appointments.</p> :
-            <div className="rtt-table-scroll"><table className="rtt-table"><thead><tr><th>Fraction</th><th>Scheduled time</th><th>Delivered dose</th><th>Status</th><th>Location</th></tr></thead>
-              <tbody>{sessions.map(s => <tr key={s.session_id}><td>#{s.fraction_number}</td><td>{formattedTime(s.scheduled_for)}</td>
-                <td>{s.delivered_gy === null ? 'Not recorded' : formatDose(Number(s.delivered_gy))}</td>
-                <td><span className={`rtt-pill rtt-pill-${s.status}`}>{s.status}</span></td><td>{s.location || 'Not provided'}</td></tr>)}</tbody></table></div>}
-        </section>
-        <section className="rtt-card"><h3>Upcoming appointments</h3>
-          {sessions.filter(s => s.status === 'scheduled' && new Date(s.scheduled_for).getTime() >= Date.now()).length === 0 ?
-            <p>No upcoming sessions recorded.</p> : <div className="rtt-appointments">{sessions.filter(s => s.status === 'scheduled' && new Date(s.scheduled_for).getTime() >= Date.now())
-              .sort((a,b)=>new Date(a.scheduled_for).getTime()-new Date(b.scheduled_for).getTime()).map(s =>
-                <div className="rtt-appointment" key={s.session_id}><CalendarDays size={20}/><div><strong>Fraction {s.fraction_number}</strong><small>{formattedTime(s.scheduled_for)}</small></div><span>{s.location || 'Location not provided'}</span></div>)}</div>}
-        </section>
       </>}
-    {!loading && !error && plans.some(p => p.status !== 'draft') && <section className="rtt-card"><div className="rtt-heading"><h3>Published treatment history</h3><span className="rtt-note">Your previous plans are retained</span></div>
-          <div className="rtt-table-scroll"><table className="rtt-table"><thead><tr><th>Plan</th><th>Status</th><th>Completed</th><th>Action</th></tr></thead>
-            <tbody>{plans.filter(p => p.status !== 'draft').map(p => <tr key={p.plan_id}>
-              <td>{p.title}</td><td><span className={`rtt-pill rtt-pill-${p.status}`}>{p.status === 'active' ? 'Published' : p.status}</span></td>
-              <td>{p.completed_fractions} / {p.total_fractions}</td>
-              <td><button className="rtt-outline" type="button" onClick={() => setHistoryPlanId(p.plan_id)}>{historyPlanId === p.plan_id ? 'Viewing' : 'View'}</button></td>
-            </tr>)}</tbody></table></div>
-          {historyPlan && <div className="rtt-lifecycle-history"><h4>{historyPlan.title}</h4>
-            <p>Site: {historyPlan.treatment_site} · Technique: {historyPlan.technique}</p>
-            <p>Recorded delivered dose: {formatDose(Number(historyPlan.delivered_total_gy))} · Completed fractions: {historyPlan.completed_fractions}</p>
-            {historyPlan.closed_at && <p>Closed: {formattedTime(historyPlan.closed_at)}</p>}
-            {historyPlan.closure_reason && <p>Recorded closure reason: {historyPlan.closure_reason}</p>}
-            {historyError && <p className="rtt-error" role="alert">{historyError}</p>}
-            {historyLoading ? <p>Loading session history…</p> : <div className="rtt-table-scroll"><table className="rtt-table"><thead><tr><th>Fraction</th><th>Date</th><th>Status</th><th>Recorded dose</th></tr></thead><tbody>
-              {historySessions.map(s => <tr key={s.session_id}><td>#{s.fraction_number}</td><td>{formattedTime(s.scheduled_for)}</td><td>{s.status}</td><td>{s.delivered_gy == null ? 'Not recorded' : formatDose(Number(s.delivered_gy))}</td></tr>)}
-              </tbody></table></div>}
-          </div>}
-        </section>
-    }
-    <p className="rtt-note">Development prototype with fictional records only. RTTRACK does not prescribe treatment, verify delivered dose, send appointment emails, or monitor emergencies.</p>
+
+    {!loading && !error && plans.some(p => p.status !== 'draft') && <section className="rtt-card rtt-history-card">
+      <div className="rtt-heading"><div><h3>Published treatment history</h3><p className="rtt-note">Open any plan to view its full fraction history without leaving this section.</p></div><span className="rtt-pill">{plans.filter(p => p.status !== 'draft').length} plan{plans.filter(p => p.status !== 'draft').length === 1 ? '' : 's'}</span></div>
+      <div className="rtt-table-scroll"><table className="rtt-table"><thead><tr><th>Plan</th><th>Status</th><th>Completed</th><th>Action</th></tr></thead>
+        <tbody>{plans.filter(p => p.status !== 'draft').map(p => <tr key={p.plan_id}>
+          <td>{p.title}</td><td><span className={`rtt-pill rtt-pill-${p.status}`}>{p.status === 'active' ? 'Published' : p.status}</span></td>
+          <td>{p.completed_fractions} / {p.total_fractions}</td>
+          <td><button className="rtt-outline" type="button" onClick={() => setHistoryPlanId(p.plan_id)}>View details</button></td>
+        </tr>)}</tbody></table></div>
+    </section>}
+
+    {!loading && !error && plan && <>
+      <section className="rtt-card"><div className="rtt-heading"><h3>Session log</h3><span className="rtt-note">Times shown in your device's time zone</span></div>
+        {sessionsError && <p className="rtt-error" role="alert">{sessionsError}</p>}
+        {sessionsLoading ? <p role="status">Loading sessions…</p> : sessions.length === 0 ?
+          <p>No sessions scheduled yet. Your doctor will add appointments.</p> :
+          <div className="rtt-table-scroll"><table className="rtt-table"><thead><tr><th>Fraction</th><th>Scheduled time</th><th>Delivered dose</th><th>Status</th><th>Location</th></tr></thead>
+            <tbody>{sessions.map(s => <tr key={s.session_id}><td>#{s.fraction_number}</td><td>{formattedTime(s.scheduled_for)}</td>
+              <td>{s.delivered_gy === null ? 'Not recorded' : formatDose(Number(s.delivered_gy))}</td>
+              <td><span className={`rtt-pill rtt-pill-${s.status}`}>{s.status}</span></td><td>{s.location || 'Not provided'}</td></tr>)}</tbody></table></div>}
+      </section>
+
+      <section className="rtt-card"><h3>Upcoming appointments</h3>
+        {sessions.filter(s => s.status === 'scheduled' && new Date(s.scheduled_for).getTime() >= Date.now()).length === 0 ?
+          <p>No upcoming sessions recorded.</p> : <div className="rtt-appointments">{sessions.filter(s => s.status === 'scheduled' && new Date(s.scheduled_for).getTime() >= Date.now())
+            .sort((a,b)=>new Date(a.scheduled_for).getTime()-new Date(b.scheduled_for).getTime()).map(s =>
+              <div className="rtt-appointment" key={s.session_id}><CalendarDays size={20}/><div><strong>Fraction {s.fraction_number}</strong><small>{formattedTime(s.scheduled_for)}</small></div><span>{s.location || 'Location not provided'}</span></div>)}</div>}
+      </section>
+    </>}
+
+    <dialog ref={historyDialogRef} className="rtt-history-dialog" aria-labelledby="rtt-history-dialog-title"
+      onCancel={event => { event.preventDefault(); closeHistory(); }}
+      onClose={closeHistory}
+      onClick={event => { if (event.target === event.currentTarget) closeHistory(); }}>
+      <div className="rtt-history-dialog-shell">
+        <div className="rtt-history-dialog-head"><div><span className="rtt-eyebrow">TREATMENT HISTORY</span><h2 id="rtt-history-dialog-title">{historyPlan?.title ?? 'Treatment plan'}</h2></div>
+          <button type="button" className="rtt-outline" onClick={closeHistory}>Close</button></div>
+        {historyPlan && <>
+          <div className="rtt-history-summary">
+            <div><small>Status</small><strong>{historyPlan.status === 'active' ? 'Published' : historyPlan.status}</strong></div>
+            <div><small>Treatment site</small><strong>{historyPlan.treatment_site}</strong></div>
+            <div><small>Technique</small><strong>{historyPlan.technique}</strong></div>
+            <div><small>Completed fractions</small><strong>{historyPlan.completed_fractions} / {historyPlan.total_fractions}</strong></div>
+            <div><small>Recorded delivered dose</small><strong>{formatDose(Number(historyPlan.delivered_total_gy))}</strong></div>
+            {historyPlan.closed_at && <div><small>Closed</small><strong>{formattedTime(historyPlan.closed_at)}</strong></div>}
+          </div>
+          {historyPlan.closure_reason && <p className="rtt-note"><strong>Recorded closure reason:</strong> {historyPlan.closure_reason}</p>}
+          {historyError && <p className="rtt-error" role="alert">{historyError}</p>}
+          {historyLoading ? <p role="status">Loading fraction history…</p> :
+            historySessions.length === 0 ? <p>No fraction records are attached to this plan.</p> :
+            <div className="rtt-table-scroll"><table className="rtt-table"><thead><tr><th>Fraction</th><th>Date</th><th>Status</th><th>Recorded dose</th></tr></thead><tbody>
+              {historySessions.map(s => <tr key={s.session_id}><td>#{s.fraction_number}</td><td>{formattedTime(s.scheduled_for)}</td><td><span className={`rtt-pill rtt-pill-${s.status}`}>{s.status}</span></td><td>{s.delivered_gy == null ? 'Not recorded' : formatDose(Number(s.delivered_gy))}</td></tr>)}
+            </tbody></table></div>}
+        </>}
+      </div>
+    </dialog>
+
+    <p className="rtt-note">RTTRACK displays recorded treatment information and does not prescribe treatment or verify delivered dose.</p>
   </div>;
 }
-
 // RTTRACK_CONTEXT_FOCUS_V1 — scoped plan navigation; does not alter treatment RPCs.
 type TreatmentFocus = { planId?: string; patientId?: string; status?: 'draft' | 'active'; fractionNumber?: number };
 export function ClinicianTreatmentManager({ userId, focus, doctorName, institution }: { userId: string; focus?: TreatmentFocus; doctorName: string; institution: string }) {
@@ -393,12 +428,12 @@ export function ClinicianTreatmentManager({ userId, focus, doctorName, instituti
     void doAction(async client=>await client.rpc('rttrack_mark_fraction_missed', {p_session_id:session.session_id}), 'Fraction marked missed.');
   }
 
-  function exportFractionsPdf() {
+  async function exportFractionsPdf() {
     if (!selected || sessionsLoading) return;
     const doc = new jsPDF({ unit: 'pt', format: 'a4' });
     const locations = [...new Set(sessions.map(session => session.location?.trim()).filter((value): value is string => !!value))];
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.text('RTTRACK', 40, 42);
-    doc.setFontSize(13); doc.text('Treatment Fraction Record', 40, 62);
+    await addRttrackLogoToPdf(doc, 40, 28, 112);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.text('Treatment Fraction Record', 40, 67);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
     const header = [
       `Patient: ${selected.patient_name}`,
@@ -437,7 +472,7 @@ export function ClinicianTreatmentManager({ userId, focus, doctorName, instituti
       doc.setFontSize(8);
       doc.setTextColor(80);
       doc.text(`Printed by: ${doctorName}`, 40, 812);
-      doc.text(`Generated: ${new Date().toLocaleString()}`, 40, 825);
+      doc.text(`Generated: ${formatDateTime(new Date())}`, 40, 825);
       doc.text(`Page ${page} of ${pageCount}`, 515, 825, { align: 'right' });
     }
     const safePatient = selected.patient_name.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'patient';

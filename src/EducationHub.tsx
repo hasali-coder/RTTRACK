@@ -1,3 +1,4 @@
+import { formatDate, formatDateTime } from './date-format';
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent } from 'react';
 import { ArrowLeft, ArrowRight, BookOpen, ExternalLink, FileText, Languages, RefreshCw, Search, ShieldCheck } from 'lucide-react';
 import { supabase } from './supabase';
@@ -84,7 +85,7 @@ export default function EducationHub() {
       <h1 ref={readerHeading} tabIndex={-1}>{selected.title}</h1>
       <div className="rte-notice"><ShieldCheck size={19}/><p>Education only, not individual medical advice. For treatment questions, contact your clinical team. For urgent concerns, follow your facility’s emergency instructions.</p></div>
       <div className="rte-reading-body">{selected.content}</div>
-      <div className="rte-source"><FileText size={18}/><div><strong>Source: {selected.source_name}</strong><p>Approved for RTTRACK display {new Date(selected.approved_at).toLocaleDateString()}.</p>{trustedLink(selected.source_url) ? <a href={trustedLink(selected.source_url)!} target="_blank" rel="noopener noreferrer">Open original source <ExternalLink size={15}/></a> : <span>Source link unavailable.</span>}</div></div>
+      <div className="rte-source"><FileText size={18}/><div><strong>Source: {selected.source_name}</strong><p>Approved for RTTRACK display {formatDate(selected.approved_at)}.</p>{trustedLink(selected.source_url) ? <a href={trustedLink(selected.source_url)!} target="_blank" rel="noopener noreferrer">Open original source <ExternalLink size={15}/></a> : <span>Source link unavailable.</span>}</div></div>
       <div className="rte-reading-bottom"><button type="button" className="rte-secondary" onClick={backToLibrary}><ArrowLeft size={17}/> Back to library</button></div>
     </article>}
     <p className="rte-footnote">Prototype · Fictional accounts only. External source websites are independent of RTTRACK. No automatic diagnosis, dose adjustment or emergency monitoring is provided.</p>
@@ -204,7 +205,7 @@ export function EducationManager() {
       <div className="rte-admin-list">{items.map(item => <article className="rte-admin-item" key={item.resource_id}>
         <div className="rte-card-top"><span className="rte-category">{item.category} · {langName(item.language_code)}</span><span className={`rte-status rte-status-${item.status}`}>{item.status}</span></div>
         <h4>{item.title}</h4><p className="rte-body">{item.content}</p><p className="rte-source-inline">Source: {item.source_name} · {trustedLink(item.source_url) ? <a href={trustedLink(item.source_url)!} target="_blank" rel="noopener noreferrer">Open original source <ExternalLink size={13}/></a> : 'Invalid source URL'}</p>
-        <small>Submitted {new Date(item.created_at).toLocaleString()} · {item.created_by === uid ? 'Created by you' : 'Created by another administrator'}</small>
+        <small>Submitted {formatDateTime(item.created_at)} · {item.created_by === uid ? 'Created by you' : 'Created by another administrator'}</small>
         {item.review_note && <p className="rte-review-note">Approval note: {item.review_note}</p>}
         {item.archive_reason && <p className="rte-review-note">Archive reason: {item.archive_reason}</p>}
         {item.status === 'draft' && item.created_by !== uid && <div className="rte-action-area">

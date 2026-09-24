@@ -1,3 +1,4 @@
+import { formatDate } from './date-format';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Activity, CalendarDays, CheckCircle2, Clock3, HeartPulse, RefreshCw, Users } from 'lucide-react';
 import { supabase } from './supabase';
@@ -172,7 +173,7 @@ export default function DoctorInsights() {
               const missed = asNumber(row.missed_fractions);
               const symptoms = asNumber(row.symptom_entries);
               return <div className="rti-day" key={row.day}>
-                <time>{new Date(`${row.day}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</time>
+                <time>{formatDate(`${row.day}T00:00:00`)}</time>
                 <div className="rti-bars">
                   <div><span>Completed</span><i style={{ width: `${(completed / maxTrend) * 100}%` }}/><strong>{completed}</strong></div>
                   <div><span>Missed</span><i style={{ width: `${(missed / maxTrend) * 100}%` }}/><strong>{missed}</strong></div>

@@ -1,3 +1,7 @@
+import { addRttrackLogoToPdf } from './branding';
+import { formatDate, formatDateTime } from './date-format';
+import autoTable from 'jspdf-autotable';
+import { jsPDF } from 'jspdf';
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { CheckCircle2, ClipboardList, Download, RefreshCw, ShieldCheck, Stethoscope } from 'lucide-react';
 import { supabase } from './supabase';
@@ -20,9 +24,7 @@ const symptoms: { value: SymptomType; label: string }[] = [
   { value: 'pain', label: 'Pain' }, { value: 'other', label: 'Other' },
 ];
 const symptomName = (kind: SymptomType) => symptoms.find(item => item.value === kind)?.label ?? 'Other';
-const formattedTime = (iso: string) => new Date(iso).toLocaleString(undefined, {
-  year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
-});
+const formattedTime = formatDateTime;
 const localDateTime = () => {
   const now = new Date();
   return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
@@ -58,7 +60,7 @@ function WeeklyChart({ entries }: { entries: SymptomEntry[] }) {
     const date = new Date(); date.setHours(0, 0, 0, 0); date.setDate(date.getDate() - (6 - i));
     const matching = entries.filter(item => localDayKey(new Date(item.onset_at)) === localDayKey(date));
     return {
-      label: date.toLocaleDateString(undefined, { weekday: 'short' }), key: localDayKey(date),
+      label: formatDate(date), key: localDayKey(date),
       fatigue: Math.max(0, ...matching.filter(item => item.symptom_type === 'fatigue').map(item => item.severity)),
       skin: Math.max(0, ...matching.filter(item => item.symptom_type === 'skin_irritation').map(item => item.severity)),
     };
@@ -77,7 +79,7 @@ function WeeklyChart({ entries }: { entries: SymptomEntry[] }) {
   </section>;
 }
 
-export function PatientSymptoms({ userId }: { userId: string }) {
+export function PatientSymptoms({ userId, patientName }: { userId: string; patientName: string }) {
   const [entries, setEntries] = useState<SymptomEntry[]>([]);
   const [links, setLinks] = useState<CareLink[]>([]);
   const [sharing, setSharing] = useState<Record<string, boolean>>({});
@@ -129,7 +131,7 @@ export function PatientSymptoms({ userId }: { userId: string }) {
       });
       if (result.error) throw result.error;
       setKind(''); setOnset(localDateTime()); setSeverity(null); setObservations('');
-      await refresh(); setNotice('Symptom saved privately. No alert or message has been sent.');
+      await refresh(); setNotice('Symptom saved privately.');
     } catch (caught) { setError(caught instanceof Error ? caught.message : 'Symptom could not be recorded.'); }
     finally { setSaving(false); }
   }
@@ -144,45 +146,98 @@ export function PatientSymptoms({ userId }: { userId: string }) {
       const result = await client.rpc('rttrack_set_symptom_sharing', { p_link_id: link.id, p_allow: allow });
       if (result.error) throw result.error;
       setChecked(prev => prev.filter(id => id !== link.id));
-      await refresh(); setNotice(allow ? 'Symptom sharing enabled for this doctor. No email or alert was sent.' : 'Symptom sharing withdrawn for this doctor.');
+      await refresh(); setNotice(allow ? 'Symptom sharing enabled for this doctor.' : 'Symptom sharing withdrawn for this doctor.');
     } catch (caught) { setError(caught instanceof Error ? caught.message : 'Could not update symptom sharing.'); }
     finally { setSaving(false); }
   }
 
-  function exportDisplayedLogs() {
+  const safePatient = patientName.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'patient';
+
+  function exportCsv() {
     if (!entries.length) return;
     const csvCell = (value: string | number | null) => {
       let text = String(value ?? '');
-      // Prevent spreadsheet applications from treating user-written text as a formula.
       if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
       return `"${text.replace(/"/g, '""')}"`;
     };
-    const rows = [
+    const rows: (string | number | null)[][] = [
+      ['RTTRACK Symptom Record', ''],
+      ['Patient', patientName],
+      ['Generated', formatDateTime(new Date())],
+      ['Displayed entries', entries.length],
+      [],
       ['Symptom', 'Onset', 'Self-rated severity (1-10)', 'Observations', 'Acknowledged at'],
-      ...entries.map(entry => [symptomName(entry.symptom_type), entry.onset_at,
-        entry.severity, entry.observations, entry.reviewed_at]),
+      ...entries.map(entry => [
+        symptomName(entry.symptom_type),
+        formatDateTime(entry.onset_at),
+        entry.severity,
+        entry.observations,
+        entry.reviewed_at ? formatDateTime(entry.reviewed_at) : 'Not acknowledged',
+      ]),
     ];
     const csv = rows.map(row => row.map(csvCell).join(',')).join('\r\n');
     const downloadUrl = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }));
     const anchor = document.createElement('a');
     anchor.href = downloadUrl;
-    anchor.download = 'rttrack-symptom-logs.csv';
+    anchor.download = `rttrack-${safePatient}-symptoms.csv`;
     anchor.click();
     window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
-    setNotice('Downloaded up to 100 displayed entries. Store the file privately; it contains symptom information.');
+    setNotice(`CSV exported for ${patientName}.`);
+  }
+
+  async function exportPdf() {
+    if (!entries.length) return;
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    await addRttrackLogoToPdf(doc, 40, 28, 112);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.text('Patient Symptom Record', 40, 67);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+    doc.text(`Patient: ${patientName}`, 40, 84);
+    doc.text(`Generated: ${formatDateTime(new Date())}`, 40, 98);
+    doc.text(`Displayed entries: ${entries.length}`, 40, 112);
+    doc.text('Record type: Patient self-reported symptom journal', 40, 126);
+
+    autoTable(doc, {
+      startY: 148,
+      head: [['Symptom', 'Onset', 'Severity', 'Observations', 'Acknowledged']],
+      body: entries.map(entry => [
+        symptomName(entry.symptom_type),
+        formatDateTime(entry.onset_at),
+        `${entry.severity}/10`,
+        entry.observations || '—',
+        entry.reviewed_at ? formatDateTime(entry.reviewed_at) : 'Not acknowledged',
+      ]),
+      styles: { fontSize: 8, cellPadding: 4, overflow: 'linebreak' },
+      headStyles: { fillColor: [11, 18, 92] },
+      columnStyles: { 3: { cellWidth: 180 } },
+      margin: { left: 40, right: 40, bottom: 42 },
+    });
+
+    const pageCount = doc.getNumberOfPages();
+    for (let page = 1; page <= pageCount; page += 1) {
+      doc.setPage(page);
+      doc.setFontSize(8); doc.setTextColor(80);
+      doc.text(`Printed for: ${patientName}`, 40, 812);
+      doc.text(`Generated: ${formatDateTime(new Date())}`, 40, 825);
+      doc.text(`Page ${page} of ${pageCount}`, 515, 825, { align: 'right' });
+    }
+    doc.save(`rttrack-${safePatient}-symptoms.pdf`);
+    setNotice(`PDF exported for ${patientName}.`);
   }
 
   return <div className="rts-module rts-patient">
     <div className="rts-header"><div><span className="rts-eyebrow">RTTRACK · SYMPTOM TRACKING</span><h2>Symptom tracking</h2>
       <p>Monitor your daily status and record observations for your own reference.</p></div>
-      <div className="rts-header-actions"><button type="button" className="rts-outline" disabled={loading || !entries.length} onClick={exportDisplayedLogs}><Download size={17}/> Export displayed logs</button>
-      <button type="button" className="rts-outline" disabled={saving} onClick={() => void refresh()}><RefreshCw size={17}/> Refresh</button></div></div>
+      <div className="rts-header-actions">
+        <button type="button" className="rts-outline" disabled={loading || !entries.length} onClick={exportCsv}><Download size={17}/> Export CSV</button>
+        <button type="button" className="rts-outline" disabled={loading || !entries.length} onClick={exportPdf}><Download size={17}/> Export PDF</button>
+        <button type="button" className="rts-outline" disabled={saving} onClick={() => void refresh()}><RefreshCw size={17}/> Refresh</button>
+      </div></div>
     <EmergencyNotice/>
     {error && <p className="rts-alert rts-error" role="alert">{error}</p>}{notice && <p className="rts-alert rts-success" role="status">{notice}</p>}
     <div className="rts-patient-grid">
       <div className="rts-main-column">
         <section className="rts-card" aria-labelledby="rts-form-title"><h2 id="rts-form-title"><ClipboardList size={20}/> Log new symptom</h2>
-          <p className="rts-muted">This is a self-reported development log, not a medical assessment.</p>
+          <p className="rts-muted">This is your self-reported symptom log.</p>
           <form className="rts-form" onSubmit={submit}>
             <div className="rts-two"><label>Symptom type<select required value={kind} onChange={e => setKind(e.target.value as SymptomType | '')} disabled={saving}>
               <option value="">Select symptom…</option>{symptoms.map(symptom => <option key={symptom.value} value={symptom.value}>{symptom.label}</option>)}</select></label>
@@ -215,7 +270,6 @@ export function PatientSymptoms({ userId }: { userId: string }) {
     </div>
   </div>;
 }
-
 export function ClinicianSymptomReview({ userId }: { userId: string }) {
   const [patients, setPatients] = useState<VisiblePatient[]>([]);
   const [selectedPatient, setSelectedPatient] = useState('');

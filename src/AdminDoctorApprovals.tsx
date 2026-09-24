@@ -1,3 +1,4 @@
+import { formatDate } from './date-format';
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { RefreshCw, Search, X } from 'lucide-react';
 import { supabase } from './supabase';
@@ -10,7 +11,7 @@ type Doctor = {
 };
 type StatusFilter = 'all' | Doctor['status'];
 type Props = { initialFilter?: StatusFilter };
-const showDate = (s: string | null) => s ? new Date(s).toLocaleDateString() : '—';
+const showDate = (s: string | null) => s ? formatDate(s) : '-';
 
 export default function AdminDoctorApprovals({ initialFilter = 'all' }: Props) {
   const [doctors, setDoctors] = useState<Doctor[]>([]);

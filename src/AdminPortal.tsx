@@ -1,3 +1,4 @@
+import { formatDate, formatDateTime } from './date-format';
 import { useCallback, useEffect, useState } from 'react';
 import { Clock3, RefreshCw, ShieldCheck, Users, UserX, X } from 'lucide-react';
 import { supabase } from './supabase';
@@ -21,9 +22,7 @@ type Review = {
   evidence_note: string;
 };
 
-const date = (value: string) => new Date(value).toLocaleDateString(undefined, {
-  year: 'numeric', month: 'short', day: 'numeric',
-});
+const date = formatDate;
 
 export default function AdminPortal() {
   const [applications, setApplications] = useState<Clinician[]>([]);
@@ -222,7 +221,7 @@ export default function AdminPortal() {
           <table className="admin-table admin-history-table">
             <thead><tr><th scope="col">Date</th><th scope="col">Applicant ID</th><th scope="col">Decision</th><th scope="col">Evidence note</th></tr></thead>
             <tbody>{reviews.map((review) => <tr key={review.id}>
-              <td>{new Date(review.decided_at).toLocaleString()}</td>
+              <td>{formatDateTime(review.decided_at)}</td>
               <td className="admin-uuid">{review.application_user_id}</td>
               <td><span className={`admin-status admin-status--${review.decision}`}>{review.decision}</span></td>
               <td className="admin-evidence">{review.evidence_note}</td>

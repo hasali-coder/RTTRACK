@@ -1,3 +1,4 @@
+import { formatDate as displayDate, formatDateTime as displayDateTime } from './date-format';
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, CalendarDays, ClipboardList, Link2, RefreshCw, Users } from 'lucide-react';
 import { supabase } from './supabase';
@@ -43,7 +44,7 @@ function dailyCompletedCounts(sessions: Session[], days = 14): DailyPoint[] {
   const today = new Date();
   const buckets = Array.from({ length: days }, (_, index) => {
     const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() - (days - 1 - index));
-    return { day: localDayKey(date), label: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }), count: 0 };
+    return { day: localDayKey(date), label: displayDate(date), count: 0 };
   });
   const lookup = new Map(buckets.map((bucket, index) => [bucket.day, index]));
   for (const session of sessions) {
@@ -102,12 +103,7 @@ type Props = {
   onNavigate: (destination: Destination, context?: NavigationContext) => void;
 };
 
-function formatAppointment(value: string) {
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? 'Date unavailable' : parsed.toLocaleString(undefined, {
-    weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
-  });
-}
+function formatAppointment(value: string) { return displayDateTime(value); }
 
 export default function ClinicianDashboard({ userId, clinicianName, onNavigate }: Props) {
   const [links, setLinks] = useState<Link[]>([]);
