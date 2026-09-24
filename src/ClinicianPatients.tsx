@@ -26,7 +26,8 @@ type Plan = {
   next_session_at: string | null;
 };
 type Filter = 'all' | 'treatment' | 'symptoms';
-type Props = { userId: string; onNavigate: (destination: Destination) => void };
+type PatientNavigationContext = { patientId?: string };
+type Props = { userId: string; onNavigate: (destination: Destination, context?: PatientNavigationContext) => void };
 type LoadState = {
   connections: Connection[];
   treatmentIds: string[];
@@ -185,7 +186,7 @@ export default function ClinicianPatients({ userId, onNavigate }: Props) {
               <span className={`rtcp-dot ${!data.errors.treatment && treatmentSet.has(selected.patient_id) ? 'rtcp-allowed' : ''}`}>
                 {data.errors.treatment ? 'Unavailable' : treatmentSet.has(selected.patient_id) ? 'Sharing allowed' : 'Not shared'}</span>
               <p>{data.errors.treatment ? 'The treatment permission service could not be checked.' : treatmentSet.has(selected.patient_id) ? 'Open Treatment to view this patient’s currently shared plans.' : 'The patient must separately authorise treatment-record sharing in Connections.'}</p>
-              <button type="button" className="rtcp-outline" disabled={!!data.errors.treatment || !treatmentSet.has(selected.patient_id)} onClick={() => onNavigate('Treatment')}>Open Treatment <ArrowRight size={15} aria-hidden="true"/></button></article>
+              <button type="button" className="rtcp-outline" disabled={!!data.errors.treatment || !treatmentSet.has(selected.patient_id)} onClick={() => onNavigate('Treatment', { patientId: selected.patient_id })}>Open Treatment <ArrowRight size={15} aria-hidden="true"/></button></article>
             <article><div><HeartPulse size={19} aria-hidden="true"/><strong>Symptoms</strong></div>
               <span className={`rtcp-dot ${!data.errors.symptoms && symptomSet.has(selected.patient_id) ? 'rtcp-allowed' : ''}`}>
                 {data.errors.symptoms ? 'Unavailable' : symptomSet.has(selected.patient_id) ? 'Sharing allowed' : 'Not shared'}</span>
@@ -202,7 +203,7 @@ export default function ClinicianPatients({ userId, onNavigate }: Props) {
               </article>)}</div>}
             {!data.errors.plans && data.plans.length >= 100 && <p className="rtcp-caution">The treatment service returned its maximum of 100 plans. This list may be incomplete.</p>}
           </div>
-          <p className="rtcp-guidance">For treatment actions and fraction history, open Treatment and select this patient. This summary cannot edit prescriptions or record delivered doses.</p>
+          <p className="rtcp-guidance">For treatment actions and fraction history, Open Treatment carries this patient into the Treatment workspace automatically. This summary cannot edit prescriptions or record delivered doses.</p>
         </>}
       </section>
     </div>

@@ -306,6 +306,31 @@ export function ClinicianTreatmentManager({ userId, focus, doctorName, instituti
     else { setPatientError(''); setPatients((result.data ?? []) as LinkedPatient[]); }
   }, [userId]);
   useEffect(() => { void reloadPatients(); }, [reloadPatients]);
+
+  // Patient-directory navigation can carry a patient directly into Treatment.
+  // The ID is accepted only if it exists in this doctor's permission-scoped list.
+  useEffect(() => {
+    if (!focus?.patientId || focus.planId || !!patientError) return;
+    const patient = patients.find(item => item.patient_id === focus.patientId);
+    if (!patient) {
+      if (patients.length > 0) {
+        setFocusMessage('This patient is unavailable or treatment-record sharing is no longer authorised.');
+      }
+      return;
+    }
+    setPatientId(patient.patient_id);
+    setPatientSearch(patient.full_name);
+    setCloseModalOpen(false);
+    setSelectedPlanId('');
+    setFractionNumber('');
+    setScheduledFor('');
+    setLocation('');
+    setDoses({});
+    setActionError('');
+    setMessage('');
+    setFocusMessage(`Opened treatment workspace for ${patient.full_name}.`);
+  }, [focus, patientError, patients]);
+
   // A dashboard plan link is resolved ONLY against permission-scoped lists.
   useEffect(() => {
     if (!focus?.planId || loading || !!error || !!patientError) return;
@@ -317,6 +342,7 @@ export function ClinicianTreatmentManager({ userId, focus, doctorName, instituti
     }
     setFocusMessage(focus.fractionNumber != null ? `Opened ${plan.title}. Find fraction ${focus.fractionNumber} in its records.` : `Opened ${plan.title}.`);
     setPatientId(plan.patient_id);
+    setPatientSearch(patients.find(patient => patient.patient_id === plan.patient_id)?.full_name ?? plan.patient_name);
     setSelectedPlanId(plan.plan_id);
   }, [focus, loading, error, patientError, plans, patients]);
   const focusedPlans = focus?.status && !focus.planId
@@ -502,11 +528,44 @@ export function ClinicianTreatmentManager({ userId, focus, doctorName, instituti
         <p className="rtt-note">Only patients with an active connection and authorised treatment sharing appear.</p>
         {patients.length === 0 ? <p>No patients have authorised treatment-record access. Connect with a patient and confirm they have authorised treatment sharing.</p> :
           <form className="rtt-form" onSubmit={createPlan}>
-            <label className="rtt-patient-search">Search connected patients<div className="rtt-search-input"><Search size={16}/><input type="search" value={patientSearch} onChange={e=>setPatientSearch(e.target.value)} placeholder="Search patient by name…" autoComplete="off"/></div></label>
-            <label>Connected patient<select required value={patientId} onChange={e=>{setPatientId(e.target.value);setCloseModalOpen(false);setSelectedPlanId('');setFractionNumber('');setScheduledFor('');setLocation('');setDoses({});setActionError('');setMessage('');}}><option value="">Select a connected patient</option>
-              {patientOptions.map(p=><option key={p.patient_id} value={p.patient_id}>{p.full_name}</option>)}</select></label>
-            {patientSearch.trim() && patientOptions.length === 0 && <p className="rtt-note">No authorised patients match that search.</p>}
-            <label>Plan title<input required minLength={3} maxLength={120} value={title} onChange={e=>setTitle(e.target.value)} placeholder="Enter the doctor's plan title"/></label>
+            <label>Connected patient
+              <div className="rtt-search-input">
+                <Search size={16}/>
+                <input
+                  type="search"
+                  list="rtt-connected-patients"
+                  value={patientSearch}
+                  placeholder="Search or select a connected patient…"
+                  autoComplete="off"
+                  onChange={e => {
+                    const value = e.target.value;
+                    setPatientSearch(value);
+                    const match = patients.find(patient =>
+                      patient.full_name.toLocaleLowerCase() === value.trim().toLocaleLowerCase()
+                    );
+                    const nextPatientId = match?.patient_id ?? '';
+                    if (nextPatientId !== patientId) {
+                      setPatientId(nextPatientId);
+                      setCloseModalOpen(false);
+                      setSelectedPlanId('');
+                      setFractionNumber('');
+                      setScheduledFor('');
+                      setLocation('');
+                      setDoses({});
+                      setActionError('');
+                      setMessage('');
+                    }
+                  }}
+                />
+                <datalist id="rtt-connected-patients">
+                  {patientOptions.map(patient =>
+                    <option key={patient.patient_id} value={patient.full_name}/>
+                  )}
+                </datalist>
+              </div>
+            </label>
+            {patientSearch.trim() && !patientId && patientOptions.length === 0 &&
+              <p className="rtt-note">No authorised patients match that name.</p>}<label>Plan title<input required minLength={3} maxLength={120} value={title} onChange={e=>setTitle(e.target.value)} placeholder="Enter the doctor's plan title"/></label>
             <div className="rtt-two"><label>Treatment site<input required minLength={2} maxLength={120} value={site} onChange={e=>setSite(e.target.value)} placeholder="From clinical record"/></label>
               <label>Technique<input required minLength={2} maxLength={120} value={technique} onChange={e=>setTechnique(e.target.value)} placeholder="From clinical record"/></label></div>
             <div className="rtt-two"><label>Prescribed fractions<input required type="number" min="1" max="1000" step="1" value={fractions} onChange={e=>setFractions(e.target.value)} placeholder="Doctor-entered"/></label>
