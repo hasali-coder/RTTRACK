@@ -67,7 +67,12 @@ export default function AdminDoctorApprovals({ initialFilter = 'all' }: Props) {
       const {error: reviewError} = await supabase.rpc('rttrack_review_clinician', {
         p_user_id: selected.user_id, p_decision: decision, p_evidence_note: note.trim(),
       });
-      if (reviewError) throw reviewError;
+      if (reviewError) {
+        if (/Applicant must confirm email before approval/i.test(reviewError.message)) {
+          throw new Error('This user has not activated their account. Ask them to verify their email before approval.');
+        }
+        throw reviewError;
+      }
       close();
       setSelectedId(null); setNote(''); setAttested(false);
       await refresh();
@@ -96,6 +101,7 @@ export default function AdminDoctorApprovals({ initialFilter = 'all' }: Props) {
     {selected && <div className="rtda-overlay" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)close();}}><section className="rtda-modal" role="dialog" aria-modal="true" aria-labelledby="rtda-dialog-title">
       <div className="rtda-modal-head"><div><span className="rtda-eyebrow">DOCTOR PROFILE</span><h2 id="rtda-dialog-title">{selected.full_name}</h2></div><button type="button" aria-label="Close doctor profile" className="rtda-outline" onClick={close} disabled={saving}><X size={18}/></button></div>
       <dl className="rtda-facts"><div><dt>Email</dt><dd>{selected.email}</dd></div><div><dt>Registration (self-reported)</dt><dd>{selected.registration_number}</dd></div><div><dt>Institution (self-reported)</dt><dd>{selected.institution}</dd></div><div><dt>Status</dt><dd>{selected.status}</dd></div><div><dt>Submitted</dt><dd>{showDate(selected.submitted_at)}</dd></div><div><dt>Reviewed</dt><dd>{showDate(selected.reviewed_at)}</dd></div>{selected.review_note && <div><dt>Latest account note</dt><dd>{selected.review_note}</dd></div>}</dl>
+      {error && <p className="rtda-alert" role="alert">{error}</p>}
       {selected.status === 'pending' ? <form className="rtda-review" onSubmit={(e:FormEvent<HTMLFormElement>)=>{e.preventDefault();void decide('approved');}}>
         <label>Verification evidence / decision reason<textarea value={note} onChange={e=>setNote(e.target.value)} required minLength={15} maxLength={2000} placeholder="Record checks performed or reason for rejection. Do not paste sensitive documents."/></label>
         <label className="rtda-attest"><input type="checkbox" checked={attested} onChange={e=>setAttested(e.target.checked)}/> I independently checked the credentials or documented the rejection reason.</label>
